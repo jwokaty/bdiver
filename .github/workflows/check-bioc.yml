@@ -1,0 +1,33 @@
+name: R-CMD-check-bioc
+
+on:
+  push:
+    branches: [devel]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container: bioconductor/bioconductor_docker:devel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          BiocManager::install(c("remotes", "rcmdcheck", "BiocCheck"),
+              ask = FALSE, update = FALSE)
+          remotes::install_deps(dependencies = TRUE,
+              repos = BiocManager::repositories())
+        shell: Rscript {0}
+
+      - name: R CMD check
+        run: |
+          rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"),
+              error_on = "warning")
+        shell: Rscript {0}
+
+      - name: BiocCheck
+        run: |
+          BiocCheck::BiocCheck(".",
+              `quit-with-status` = TRUE, `no-check-bioc-help` = TRUE)
+        shell: Rscript {0}

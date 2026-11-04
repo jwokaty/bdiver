@@ -1,0 +1,40 @@
+Package: bdiver
+Type: Package
+Title: Client for the BacDive Bacterial Diversity Metadatabase API
+Version: 0.99.0
+Authors@R:
+    person("A", "Wokaty", email = "andres.wokaty@sph.cuny.edu",
+        role = c("aut", "cre"))
+Description: Provides an interface to version 2 of the BacDive (the
+    Bacterial Diversity Metadatabase) web service at
+    https://api.bacdive.dsmz.de/v2/. Strains can be searched by taxon,
+    culture collection number, 16S rRNA gene accession, or genome
+    assembly accession, and full strain records can be retrieved. Records
+    can be flattened into tables using a user-defined field specification,
+    and the complete database can be exported to a delimited file, for
+    example to be used as a data source for bugphyzz. AI-predicted traits
+    are excluded unless explicitly requested.
+License: Artistic-2.0
+URL: https://github.com/jwokaty/bdiver
+BugReports: https://github.com/jwokaty/bdiver/issues
+Encoding: UTF-8
+Depends:
+    R (>= 4.6.0)
+Imports:
+    httr2 (>= 1.0.0),
+    stats,
+    utils
+Suggests:
+    BiocStyle,
+    httptest2,
+    jsonlite,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr
+biocViews: Software, DataImport, ThirdPartyClient, Microbiome,
+    Annotation
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.1

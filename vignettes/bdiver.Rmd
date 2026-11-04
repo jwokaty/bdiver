@@ -1,0 +1,195 @@
+---
+title: "Accessing BacDive with bdiver"
+author:
+- name: A Wokaty
+  affiliation: CUNY Graduate School of Public Health and Health Policy
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+    BiocStyle::html_document:
+        toc: true
+vignette: >
+    %\VignetteIndexEntry{Accessing BacDive with bdiver}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+## Network chunks run only when BacDive is reachable, so the vignette
+## builds offline.
+online <- tryCatch({
+    httr2::req_perform(httr2::req_timeout(
+        httr2::request("https://api.bacdive.dsmz.de/v2/fetch/24493"), 20))
+    TRUE
+}, error = function(e) FALSE)
+```
+
+# Introduction
+
+[BacDive](https://bacdive.dsmz.de/), the Bacterial Diversity Metadatabase,
+holds standardized phenotypic, physiological, and molecular data for more than
+100,000 bacterial and archaeal strains. **bdiver** is a client for version 2
+of the BacDive web service. It can
+
+* search strains by taxon, culture collection number, or sequence accession;
+* retrieve complete strain records;
+* flatten records into tables with columns you choose; and
+* export the whole database to a delimited file, for example to be used
+    by [bugphyzz](https://bioconductor.org/packages/bugphyzz).
+
+The BacDive API no longer requires registration. BacDive data may only be
+used in compliance with the
+[BacDive terms of use](https://bacdive.dsmz.de/about).
+
+# Installation
+
+```{r install, eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("bdiver")
+```
+
+```{r load}
+library(bdiver)
+```
+
+# Searching
+
+Each search function returns the BacDive IDs of the matching strains.
+
+```{r search, eval = online}
+ids <- bdSearchTaxon("Phaeobacter", "gallaeciensis")
+ids
+bdSearchCultureCollection("DSM 26640")
+bdSearch16S("KC176239")
+bdSearchGenome("GCA_000511385")
+```
+
+Culture collection and accession searches accept several values, and can
+match partially with `searchType`:
+
+```{r search-type, eval = online}
+length(bdSearchCultureCollection("DSM 2664", searchType = "startswith"))
+```
+
+# Retrieving records
+
+`bdFetch()` downloads full records, 100 per request. Each record is a nested
+list with one element per BacDive section.
+
+```{r fetch, eval = online}
+records <- bdFetch(ids)
+names(records[[1]])
+```
+
+The rest of this vignette uses a record shipped with the package, so it can
+also be followed offline.
+
+```{r example}
+record <- bdExampleRecord()
+record$General$description
+```
+
+## AI-predicted traits
+
+BacDive offers genome-based predictions of some traits. They are excluded
+unless you opt in with `predictions = TRUE`:
+
+```{r predictions, eval = FALSE}
+records <- bdFetch(ids, predictions = TRUE)
+```
+
+Predicted values appear in a `"Genome-based predictions"` section and also
+next to observed values in other sections. They are recognizable by their
+`confidence` score, and bdiver ignores them unless asked to:
+
+```{r predicted-values}
+path <- c("Morphology", "cell morphology", "gram stain")
+bdValues(record, path)
+bdValues(record, path, predicted = TRUE)
+```
+
+# Building tables
+
+## Fields
+
+Any element of a record can be reached with a path of element names.
+Because an element can hold one observation or many, `bdValues()` returns all
+values found:
+
+```{r values}
+bdValues(record, c("Culture and growth conditions", "culture temp",
+    "temperature"))
+```
+
+A *field specification* is a named list describing the columns of a table.
+Each element is either a path, a field made by `bdField()`, or any function
+that takes a record and returns a string.
+
+```{r fields}
+fields <- list(
+    bacdive_id = c("General", "BacDive-ID"),
+    species = c("Name and taxonomic classification", "species"),
+    temperature = bdField(c("Culture and growth conditions",
+        "culture temp", "temperature"), select = "first"),
+    media = bdField(c("Culture and growth conditions", "culture medium",
+        "name"), collapse = " | "),
+    n_references = function(record) length(record$Reference)
+)
+bdExtract(list(record), fields)
+```
+
+## Default fields
+
+`bdDefaultFields()` gives the columns of the BacDive table used by bugphyzz.
+Start from it and add or remove columns as needed:
+
+```{r default-fields}
+fields <- bdDefaultFields()
+names(fields)
+tbl <- bdExtract(list(record), fields)
+t(tbl)
+```
+
+`bdPredictionFields()` adds a prediction and a confidence column for each
+predicted trait:
+
+```{r prediction-fields}
+t(bdExtract(list(record), bdPredictionFields(c("gram-positive", "motility"))))
+```
+
+# Exporting BacDive
+
+`bdExport()` fetches records in batches, flattens them with a field
+specification, and appends them to a file. Here, only a few strains are
+exported:
+
+```{r export, eval = online}
+out <- tempfile(fileext = ".csv")
+bdExport(out, ids = ids)
+head(read.csv(out)[, 1:6])
+```
+
+Leave `ids` as `NULL` to export every strain in BacDive. IDs are then
+scanned upwards from 1 until no more strains are found. A full export takes
+about an hour; if it is interrupted, run the same call again and it will
+continue where it stopped.
+
+```{r export-all, eval = FALSE}
+## Everything, in the bugphyzz format
+bdExport("bacdive.csv")
+
+## Everything, including AI-predicted traits
+bdExport("bacdive_predictions.csv", predictions = TRUE)
+
+## Selected columns as a tab-separated file
+fields <- c(bdDefaultFields()[c("bacdive_id", "taxon_name", "ncbi_id")],
+    list(keywords = c("General", "keywords")))
+bdExport("bacdive_keywords.tsv", fields, sep = "\t")
+```
+
+# Session information
+
+```{r session}
+sessionInfo()
+```
