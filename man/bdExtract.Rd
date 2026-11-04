@@ -13,8 +13,13 @@ bdExtract(records, fields = bdDefaultFields())
 \code{\link[=bdDefaultFields]{bdDefaultFields()}}.}
 }
 \value{
-A \code{data.frame} of \code{character} columns, one row per record.
-Missing values are \code{NA}.
+A \link[S4Vectors:DataFrame]{S4Vectors::DataFrame} of \code{character} columns, one row per
+record, with missing values as \code{NA}. Column annotations are available
+with \code{\link[S4Vectors:mcols]{S4Vectors::mcols()}}: \code{path}, the BacDive element each column
+comes from (\code{NA} for custom functions), and \code{predicted}, whether it
+holds AI-predicted values. \code{\link[S4Vectors:metadata]{S4Vectors::metadata()}} records the data
+source and the time of extraction. Use \code{as.data.frame()} for a base
+\code{data.frame}.
 }
 \description{
 \code{bdExtract()} applies a field specification to each record and returns
@@ -23,7 +28,8 @@ one row per strain and one column per field.
 \examples{
 records <- list(bdExampleRecord())
 tbl <- bdExtract(records)
-t(tbl[, 1:12])
+tbl[, 1:6]
+S4Vectors::mcols(tbl)
 
 ## Choose your own columns
 bdExtract(records, list(

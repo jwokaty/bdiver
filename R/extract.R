@@ -26,6 +26,18 @@
     }, character(1))
 }
 
+## Describe each column: its BacDive path (NA for custom functions) and
+## whether it holds AI-predicted values.
+.bdColumnInfo <- function(fields) {
+    info <- function(which, default) {
+        unname(vapply(fields, function(f) {
+            attr(f, which, exact = TRUE) %||% default
+        }, default))
+    }
+    S4Vectors::DataFrame(path = info("bdiver_path", NA_character_),
+        predicted = info("bdiver_predicted", NA), row.names = names(fields))
+}
+
 #' Flatten BacDive records into a table
 #'
 #' `bdExtract()` applies a field specification to each record and returns
@@ -35,13 +47,19 @@
 #' @param fields Named `list` field specification; see [bdField()] and
 #'     [bdDefaultFields()].
 #'
-#' @return A `data.frame` of `character` columns, one row per record.
-#'     Missing values are `NA`.
+#' @return A [S4Vectors::DataFrame] of `character` columns, one row per
+#'     record, with missing values as `NA`. Column annotations are available
+#'     with [S4Vectors::mcols()]: `path`, the BacDive element each column
+#'     comes from (`NA` for custom functions), and `predicted`, whether it
+#'     holds AI-predicted values. [S4Vectors::metadata()] records the data
+#'     source and the time of extraction. Use `as.data.frame()` for a base
+#'     `data.frame`.
 #'
 #' @examples
 #' records <- list(bdExampleRecord())
 #' tbl <- bdExtract(records)
-#' t(tbl[, 1:12])
+#' tbl[, 1:6]
+#' S4Vectors::mcols(tbl)
 #'
 #' ## Choose your own columns
 #' bdExtract(records, list(
@@ -56,7 +74,11 @@ bdExtract <- function(records, fields = bdDefaultFields()) {
     fields <- .bdAsFields(fields)
     rows <- lapply(records, .bdExtractRecord, fields = fields)
     values <- matrix(as.character(unlist(rows, use.names = FALSE)),
-        ncol = length(fields),
-        byrow = TRUE, dimnames = list(NULL, names(fields)))
-    as.data.frame(values, stringsAsFactors = FALSE)
+        ncol = length(fields), byrow = TRUE,
+        dimnames = list(NULL, names(fields)))
+    tbl <- S4Vectors::DataFrame(values, check.names = FALSE)
+    S4Vectors::mcols(tbl) <- .bdColumnInfo(fields)
+    S4Vectors::metadata(tbl) <- list(source = .bdBaseUrl(),
+        extracted = Sys.time())
+    tbl
 }

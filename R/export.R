@@ -3,26 +3,20 @@
 }
 
 .bdReadProgress <- function(file) {
-    state <- read.dcf(.bdProgressFile(file), all = TRUE)
-    list(
-        mode = state[["mode"]],
-        position = as.integer(state[["position"]]),
-        empty = as.integer(state[["empty"]]),
-        rows = as.integer(state[["rows"]]),
-        columns = strsplit(state[["columns"]], "\t", fixed = TRUE)[[1L]]
-    )
+    readRDS(.bdProgressFile(file))
 }
 
+## Write progress to a temporary file first, then move it into place, so
+## that a crash never leaves a partially written progress file.
 .bdWriteProgress <- function(file, state) {
-    out <- state
-    out[["columns"]] <- paste(state[["columns"]], collapse = "\t")
     tmp <- paste0(.bdProgressFile(file), ".tmp")
-    write.dcf(as.data.frame(out, stringsAsFactors = FALSE), tmp)
-    file.rename(tmp, .bdProgressFile(file))
+    saveRDS(state, tmp)
+    if (!file.rename(tmp, .bdProgressFile(file)))
+        stop("could not save export progress", call. = FALSE)
 }
 
 .bdWriteRows <- function(tbl, file, sep, header = FALSE) {
-    utils::write.table(tbl, file, sep = sep, quote = TRUE, qmethod = "double",
+    utils::write.table(as.data.frame(tbl, optional = TRUE), file, sep = sep, quote = TRUE, qmethod = "double",
         row.names = FALSE, col.names = header, append = !header, na = "",
         fileEncoding = "UTF-8")
 }

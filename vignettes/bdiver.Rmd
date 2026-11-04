@@ -139,6 +139,20 @@ fields <- list(
 bdExtract(list(record), fields)
 ```
 
+## The result: a DataFrame
+
+`bdExtract()` returns a `DataFrame` from
+`r BiocStyle::Biocpkg("S4Vectors")`, Bioconductor's version of a
+`data.frame`. It works like a `data.frame` (`$`, `[`, `nrow()`) and also
+records where each column came from:
+
+```{r dataframe}
+tbl <- bdExtract(list(record), fields)
+S4Vectors::mcols(tbl)
+S4Vectors::metadata(tbl)
+as.data.frame(tbl)
+```
+
 ## Default fields
 
 `bdDefaultFields()` gives the columns of the BacDive table used by bugphyzz.
@@ -148,14 +162,16 @@ Start from it and add or remove columns as needed:
 fields <- bdDefaultFields()
 names(fields)
 tbl <- bdExtract(list(record), fields)
-t(tbl)
+t(as.data.frame(tbl))
 ```
 
 `bdPredictionFields()` adds a prediction and a confidence column for each
 predicted trait:
 
 ```{r prediction-fields}
-t(bdExtract(list(record), bdPredictionFields(c("gram-positive", "motility"))))
+preds <- bdExtract(list(record),
+    bdPredictionFields(c("gram-positive", "motility")))
+t(as.data.frame(preds))
 ```
 
 # Exporting BacDive

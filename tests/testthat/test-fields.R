@@ -28,7 +28,7 @@ test_that("default fields reproduce the bugphyzz columns", {
     expect_identical(tbl$biosafety_level, "1")
     expect_match(tbl$metabolite_utilization, "nitrate \\+ reduction")
     expect_match(tbl$metabolite_production, "^indole no$")
-    expect_false(any(grepl("<I>", unlist(tbl), fixed = TRUE)))
+    expect_false(any(grepl("<I>", unlist(as.list(tbl)), fixed = TRUE)))
 })
 
 test_that("prediction fields are opt-in", {
@@ -55,4 +55,19 @@ test_that("bdExtract validates field specifications", {
         n = function(r) length(r)))
     expect_identical(tbl$n, as.character(length(records[[1]])))
     expect_identical(nrow(bdExtract(list(), list(id = "x"))), 0L)
+})
+
+test_that("bdExtract returns an annotated DataFrame", {
+    fields <- c(bdDefaultFields()[c("bacdive_id", "taxon_name")],
+        bdPredictionFields("motility"),
+        list(n = function(r) length(r)))
+    tbl <- bdExtract(list(bdExampleRecord()), fields)
+    expect_s4_class(tbl, "DataFrame")
+    info <- S4Vectors::mcols(tbl)
+    expect_identical(rownames(info), names(fields))
+    expect_identical(info$path[1:2], c("General > BacDive-ID", NA))
+    expect_identical(info$predicted, c(FALSE, NA, TRUE, TRUE, NA))
+    expect_match(info$path[3], "Genome-based predictions")
+    expect_named(S4Vectors::metadata(tbl), c("source", "extracted"))
+    expect_s3_class(as.data.frame(tbl), "data.frame")
 })

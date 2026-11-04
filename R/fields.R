@@ -61,7 +61,7 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
     select <- match.arg(select)
     force(collapse)
     force(predicted)
-    function(record) {
+    field <- function(record) {
         vals <- bdValues(record, path, predicted = predicted)
         if (!is.character(vals))
             stop("path '", paste(path, collapse = " > "),
@@ -71,12 +71,20 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
             vals <- utils::head(vals, 1L)
         .bdScalar(vals, collapse)
     }
+    .bdDescribe(field, path, predicted)
+}
+
+## Record where a field's values come from; reported by bdExtract().
+.bdDescribe <- function(field, path, predicted) {
+    attr(field, "bdiver_path") <- paste(path, collapse = " > ")
+    attr(field, "bdiver_predicted") <- predicted
+    field
 }
 
 ## A field pasting several elements of each entry at `path` together, e.g.
 ## "nitrate + reduction" for metabolite utilization.
 .bdEntryField <- function(path, keys, collapse = ";") {
-    function(record) {
+    field <- function(record) {
         entries <- bdValues(record, path)
         if (!length(entries) || is.character(entries))
             return(NA_character_)
@@ -88,6 +96,7 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
         }, character(1))
         .bdScalar(unique(vals[nzchar(vals)]), collapse)
     }
+    .bdDescribe(field, path, FALSE)
 }
 
 ## Named NCBI taxonomy IDs of a record, named by matching level.
@@ -284,7 +293,7 @@ bdDefaultFields <- function(predictions = FALSE) {
 .bdPredictionField <- function(trait, element) {
     force(trait)
     force(element)
-    function(record) {
+    field <- function(record) {
         preds <- bdValues(record, c("Genome-based predictions",
             "predictions"), predicted = TRUE)
         if (!length(preds) || is.character(preds))
@@ -294,6 +303,8 @@ bdDefaultFields <- function(predictions = FALSE) {
             return(NA_character_)
         .bdScalar(hit[[1L]][[element]])
     }
+    .bdDescribe(field, c("Genome-based predictions", "predictions",
+        paste0(element, " [trait = ", trait, "]")), TRUE)
 }
 
 #' @rdname bdDefaultFields
