@@ -8,3 +8,9 @@
 * Export all of BacDive, or selected strains, to a delimited file with
   resumable downloads. The default columns match the BacDive table used by
   bugphyzz.
+* `bdExtract()` returns an `S4Vectors::DataFrame` whose `mcols()` record
+  the BacDive path of each column and whether it holds predicted values.
+* Optional download cache with BiocFileCache: `bdCacheEnable()`,
+  `bdCacheDisable()`, `bdCacheInfo()`, `bdCachedIds()`, `bdCacheClear()`.
+* `bdExport()` locks the output file so that only one R session can write
+  to it, and replaces locks left by crashed sessions.

@@ -13,6 +13,7 @@ bdExport(
   resume = TRUE,
   overwrite = FALSE,
   maxEmptyBatches = 100L,
+  cache = .bdUseCache(),
   verbose = TRUE
 )
 }
@@ -43,6 +44,11 @@ nothing to resume? Defaults to \code{FALSE}.}
 \item{maxEmptyBatches}{\code{integer(1)} When scanning all IDs, stop after
 this many consecutive empty batches of 100 IDs. Defaults to \code{100}.}
 
+\item{cache}{\code{logical(1)} Use the download cache? By default, the choice
+made with \code{\link[=bdCacheEnable]{bdCacheEnable()}} or \code{\link[=bdCacheDisable]{bdCacheDisable()}}. With the cache, a
+second export (for example with other fields) downloads nothing that
+was already downloaded. See \link{bdCache}.}
+
 \item{verbose}{\code{logical(1)} Report progress? Defaults to \code{TRUE}.}
 }
 \value{
@@ -62,6 +68,17 @@ The export can be interrupted and resumed: progress is saved after every
 batch in \code{paste0(file, ".progress")}, and calling \code{bdExport()} again with
 the same \code{file}, \code{fields} and \code{ids} continues where it stopped. The
 progress file is removed when the export completes.
+
+While an export runs, \code{paste0(file, ".lock")} keeps other R sessions from
+exporting to the same file. The lock is removed when \code{bdExport()} ends,
+including on errors and interruptions. If R itself crashes, the lock is
+left behind; bdiver detects that its process no longer runs and replaces
+it. On Windows this check uses the \code{tasklist} command, and it is not
+possible for locks created on another computer (e.g. on a network
+drive). In those cases \code{bdExport()} stops with the path of the lock;
+make sure no export is running, delete it with
+\code{unlink(paste0(file, ".lock"), recursive = TRUE)}, and run \code{bdExport()}
+again.
 
 A full export makes roughly 2,000 requests and takes about an hour.
 }

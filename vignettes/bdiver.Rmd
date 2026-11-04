@@ -188,8 +188,32 @@ head(read.csv(out)[, 1:6])
 
 Leave `ids` as `NULL` to export every strain in BacDive. IDs are then
 scanned upwards from 1 until no more strains are found. A full export takes
-about an hour; if it is interrupted, run the same call again and it will
-continue where it stopped.
+about an hour.
+
+## Interrupted exports
+
+Rows are written to the file after every batch of 100 IDs, together with a
+small progress file. If the export is interrupted (an error, a lost
+connection, or R crashing), run the same call again: it continues where it
+stopped, so at most one batch is downloaded again. With the cache enabled,
+nothing is downloaded twice.
+
+## Locks
+
+While an export runs, a lock (`<file>.lock`) keeps other R sessions from
+writing to the same file. It is removed when the export ends, even after an
+error. If R crashes, the lock stays behind; the next `bdExport()` notices
+that the process that made it has ended and replaces it.
+
+On Windows, bdiver checks for that process with the `tasklist` command. If
+it cannot check (for example when `tasklist` is not available, or the lock
+was made on another computer sharing the same drive), `bdExport()` stops
+and shows the lock's path. Make sure no export of that file is running, then
+delete the lock and run `bdExport()` again:
+
+```{r unlock, eval = FALSE}
+unlink("bacdive.csv.lock", recursive = TRUE)
+```
 
 ```{r export-all, eval = FALSE}
 ## Everything, in the bugphyzz format
@@ -203,6 +227,50 @@ fields <- c(bdDefaultFields()[c("bacdive_id", "taxon_name", "ncbi_id")],
     list(keywords = c("General", "keywords")))
 bdExport("bacdive_keywords.tsv", fields, sep = "\t")
 ```
+
+# Caching downloads
+
+bdiver can keep the records it downloads in a cache managed by
+`r BiocStyle::Biocpkg("BiocFileCache")`. With the cache, records are
+downloaded once and reused by later calls to `bdFetch()` and `bdExport()`,
+whatever search they come from. This is useful when you
+
+* run several searches and combine the results into one table;
+* export again with different fields, without downloading BacDive again;
+* work offline with strains you have already downloaded.
+
+The first time bdiver downloads data in an interactive session it asks
+whether to cache, and remembers your answer. You can also decide yourself:
+
+```{r cache-choice, eval = FALSE}
+bdCacheEnable()
+bdCacheDisable()
+options(bdiver.cache = FALSE)   # for this session only
+```
+
+Each time bdiver is loaded it reports the size of the cache. These functions
+show what it holds and delete it:
+
+```{r cache-manage, eval = FALSE}
+bdCacheInfo()          # location, number of strains, size, last update
+bdCachedIds()          # BacDive IDs in the cache
+bdCacheClear()         # delete everything
+```
+
+For example, records from several searches can be combined into a
+`DataFrame` without downloading any strain twice:
+
+```{r cache-example, eval = FALSE}
+ids <- c(bdSearchTaxon("Phaeobacter"), bdSearchTaxon("Ruegeria"))
+tbl <- bdExtract(bdFetch(ids))
+
+## Later, offline: everything downloaded so far
+tbl <- bdExtract(bdFetch(bdCachedIds()))
+```
+
+The cache does not expire. BacDive is updated regularly, so clear the cache
+with `bdCacheClear()` to get current data. A cache of all of BacDive takes
+about 1 GB. Records fetched with `predictions = TRUE` are cached separately.
 
 # Session information
 

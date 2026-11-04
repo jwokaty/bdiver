@@ -4,13 +4,16 @@
 \alias{bdFetch}
 \title{Retrieve BacDive strain records}
 \usage{
-bdFetch(ids, predictions = FALSE)
+bdFetch(ids, predictions = FALSE, cache = .bdUseCache())
 }
 \arguments{
 \item{ids}{\code{integer()} BacDive IDs, e.g. from \code{\link[=bdSearchTaxon]{bdSearchTaxon()}}.}
 
 \item{predictions}{\code{logical(1)} Include AI-predicted traits? Defaults to
 \code{FALSE}.}
+
+\item{cache}{\code{logical(1)} Use the download cache? By default, the choice
+made with \code{\link[=bdCacheEnable]{bdCacheEnable()}} or \code{\link[=bdCacheDisable]{bdCacheDisable()}}. See \link{bdCache}.}
 }
 \value{
 A named \code{list} with one element per strain found, named by
@@ -20,7 +23,8 @@ IDs that do not exist in BacDive are dropped with a message.
 \description{
 \code{bdFetch()} downloads the complete BacDive records for the given BacDive
 IDs. Requests are split into batches of 100 IDs, the maximum allowed by
-the API.
+the API. When the cache is in use (see \link{bdCache}), records downloaded
+before are read from the cache and only the others are downloaded.
 }
 \details{
 AI-based trait predictions are excluded by default. When

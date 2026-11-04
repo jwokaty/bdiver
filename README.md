@@ -49,4 +49,30 @@ bdExport("bacdive.csv")
 bdExport("bacdive_predictions.csv", predictions = TRUE)
 ```
 
+## Caching
+
+Downloads can be cached with BiocFileCache, so that they are reused across
+searches and exports. bdiver asks the first time you download data; change
+your choice with `bdCacheEnable()` or `bdCacheDisable()`. When loaded,
+bdiver reports the size of the cache.
+
+```r
+bdCacheInfo()     # location, number of strains, size
+bdCachedIds()     # IDs available offline
+bdCacheClear()    # delete the cache
+```
+
+## Interrupted exports and Windows
+
+`bdExport()` saves its progress after every 100 IDs; run the same call
+again to continue after an interruption. A lock file (`<file>.lock`)
+prevents two R sessions from exporting to the same file. Locks left by a
+crash are replaced automatically, except when this cannot be checked (on
+Windows without `tasklist`, or for a lock created on another computer). In
+that case, make sure no export is running and delete the lock:
+
+```r
+unlink("bacdive.csv.lock", recursive = TRUE)
+```
+
 See the vignette for details: `vignette("bdiver")`.

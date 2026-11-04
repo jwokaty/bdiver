@@ -16,8 +16,8 @@
 }
 
 .bdWriteRows <- function(tbl, file, sep, header = FALSE) {
-    utils::write.table(as.data.frame(tbl, optional = TRUE), file, sep = sep, quote = TRUE, qmethod = "double",
-        row.names = FALSE, col.names = header, append = !header, na = "",
+    utils::write.table(as.data.frame(tbl, optional = TRUE), file, sep = sep,
+        quote = TRUE, qmethod = "double", row.names = FALSE, col.names = header, append = !header, na = "",
         fileEncoding = "UTF-8")
 }
 
@@ -81,6 +81,17 @@
 #' the same `file`, `fields` and `ids` continues where it stopped. The
 #' progress file is removed when the export completes.
 #'
+#' While an export runs, `paste0(file, ".lock")` keeps other R sessions from
+#' exporting to the same file. The lock is removed when `bdExport()` ends,
+#' including on errors and interruptions. If R itself crashes, the lock is
+#' left behind; bdiver detects that its process no longer runs and replaces
+#' it. On Windows this check uses the `tasklist` command, and it is not
+#' possible for locks created on another computer (e.g. on a network
+#' drive). In those cases `bdExport()` stops with the path of the lock;
+#' make sure no export is running, delete it with
+#' `unlink(paste0(file, ".lock"), recursive = TRUE)`, and run `bdExport()`
+#' again.
+#'
 #' A full export makes roughly 2,000 requests and takes about an hour.
 #'
 #' @param file `character(1)` Path of the file to create.
@@ -101,6 +112,10 @@
 #'     nothing to resume? Defaults to `FALSE`.
 #' @param maxEmptyBatches `integer(1)` When scanning all IDs, stop after
 #'     this many consecutive empty batches of 100 IDs. Defaults to `100`.
+#' @param cache `logical(1)` Use the download cache? By default, the choice
+#'     made with [bdCacheEnable()] or [bdCacheDisable()]. With the cache, a
+#'     second export (for example with other fields) downloads nothing that
+#'     was already downloaded. See [bdCache].
 #' @param verbose `logical(1)` Report progress? Defaults to `TRUE`.
 #'
 #' @return The path to `file`, invisibly.
@@ -122,9 +137,12 @@
 #' @export
 bdExport <- function(file, fields = bdDefaultFields(predictions),
     ids = NULL, predictions = FALSE, sep = ",", resume = TRUE,
-    overwrite = FALSE, maxEmptyBatches = 100L, verbose = TRUE) {
+    overwrite = FALSE, maxEmptyBatches = 100L, cache = .bdUseCache(),
+    verbose = TRUE) {
     stopifnot(is.character(file), length(file) == 1L, !is.na(file))
     fields <- .bdAsFields(fields)
+    lock <- .bdAcquireLock(file)
+    on.exit(.bdReleaseLock(lock), add = TRUE)
     if (!is.null(ids))
         ids <- .bdCheckIds(ids)
     mode <- if (is.null(ids)) "scan" else
@@ -137,7 +155,7 @@ bdExport <- function(file, fields = bdDefaultFields(predictions),
         batch <- .bdNextBatch(state, ids, maxEmptyBatches)
         if (!length(batch))
             break
-        records <- .bdFetchBatch(batch, predictions = predictions)
+        records <- .bdFetchRecords(batch, predictions, cache)
         if (length(records))
             .bdWriteRows(bdExtract(records, fields), file, sep)
         state[["position"]] <- state[["position"]] + length(batch)

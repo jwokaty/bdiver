@@ -22,11 +22,28 @@
     records[as.character(ids[as.character(ids) %in% names(records)])]
 }
 
+## Fetch records over the network, at most .bdMaxIds() per request.
+.bdFetchNetwork <- function(ids, predictions = FALSE) {
+    if (!length(ids))
+        return(list())
+    batches <- split(ids, ceiling(seq_along(ids) / .bdMaxIds()))
+    records <- lapply(unname(batches), .bdFetchBatch,
+        predictions = predictions)
+    unlist(records, recursive = FALSE) %||% list()
+}
+
+.bdFetchRecords <- function(ids, predictions = FALSE, cache = FALSE) {
+    if (isTRUE(cache))
+        return(.bdFetchCached(ids, predictions))
+    .bdFetchNetwork(ids, predictions)
+}
+
 #' Retrieve BacDive strain records
 #'
 #' `bdFetch()` downloads the complete BacDive records for the given BacDive
 #' IDs. Requests are split into batches of 100 IDs, the maximum allowed by
-#' the API.
+#' the API. When the cache is in use (see [bdCache]), records downloaded
+#' before are read from the cache and only the others are downloaded.
 #'
 #' AI-based trait predictions are excluded by default. When
 #' `predictions = TRUE`, BacDive adds a `"Genome-based predictions"` section
@@ -38,6 +55,8 @@
 #' @param ids `integer()` BacDive IDs, e.g. from [bdSearchTaxon()].
 #' @param predictions `logical(1)` Include AI-predicted traits? Defaults to
 #'     `FALSE`.
+#' @param cache `logical(1)` Use the download cache? By default, the choice
+#'     made with [bdCacheEnable()] or [bdCacheDisable()]. See [bdCache].
 #'
 #' @return A named `list` with one element per strain found, named by
 #'     BacDive ID. Each element is the strain record as a nested list.
@@ -53,13 +72,9 @@
 #' }
 #'
 #' @export
-bdFetch <- function(ids, predictions = FALSE) {
+bdFetch <- function(ids, predictions = FALSE, cache = .bdUseCache()) {
     ids <- .bdCheckIds(ids)
-    batches <- split(ids, ceiling(seq_along(ids) / .bdMaxIds()))
-    records <- lapply(batches, .bdFetchBatch, predictions = predictions)
-    records <- unlist(unname(records), recursive = FALSE)
-    if (is.null(records))
-        records <- list()
+    records <- .bdFetchRecords(ids, predictions, cache)
     missing <- setdiff(as.character(ids), names(records))
     if (length(missing))
         message(length(missing), " BacDive ID(s) not found: ",
