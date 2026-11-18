@@ -13,7 +13,7 @@ bdExport(
   resume = TRUE,
   overwrite = FALSE,
   maxEmptyBatches = 100L,
-  cache = .bdUseCache(),
+  cache = NULL,
   verbose = TRUE
 )
 }
@@ -21,8 +21,8 @@ bdExport(
 \item{file}{\code{character(1)} Path of the file to create.}
 
 \item{fields}{Named \code{list} field specification; see \code{\link[=bdField]{bdField()}}. The
-default, \code{\link[=bdDefaultFields]{bdDefaultFields()}}, adds AI-predicted trait columns only
-when \code{predictions = TRUE}.}
+default, \code{bdDefaultFields(predictions)}, includes AI-predicted trait
+columns only when \code{predictions = TRUE}.}
 
 \item{ids}{\code{integer()} or \code{NULL} BacDive IDs to export, e.g. from
 \code{\link[=bdSearchTaxon]{bdSearchTaxon()}}. \code{NULL} (default) exports every strain.}
@@ -44,10 +44,10 @@ nothing to resume? Defaults to \code{FALSE}.}
 \item{maxEmptyBatches}{\code{integer(1)} When scanning all IDs, stop after
 this many consecutive empty batches of 100 IDs. Defaults to \code{100}.}
 
-\item{cache}{\code{logical(1)} Use the download cache? By default, the choice
-made with \code{\link[=bdCacheEnable]{bdCacheEnable()}} or \code{\link[=bdCacheDisable]{bdCacheDisable()}}. With the cache, a
+\item{cache}{\code{logical(1)} or \code{NULL} Use the download cache? \code{NULL}
+(default) uses your saved choice; see \link{bdCache}. With the cache, a
 second export (for example with other fields) downloads nothing that
-was already downloaded. See \link{bdCache}.}
+was already downloaded.}
 
 \item{verbose}{\code{logical(1)} Report progress? Defaults to \code{TRUE}.}
 }
@@ -62,41 +62,56 @@ exported in the format used by bugphyzz.
 }
 \details{
 When \code{ids} is \code{NULL}, BacDive IDs are scanned upwards from 1 until
-\code{maxEmptyBatches} consecutive batches return no strains.
+\code{maxEmptyBatches} consecutive batches return no strains. A full export
+makes roughly 2,000 requests and takes about an hour.
+}
+\section{Interrupted exports}{
 
-The export can be interrupted and resumed: progress is saved after every
-batch in \code{paste0(file, ".progress")}, and calling \code{bdExport()} again with
-the same \code{file}, \code{fields} and \code{ids} continues where it stopped. The
-progress file is removed when the export completes.
+Progress is saved after every batch in \code{paste0(file, ".progress")}.
+If an export is interrupted, call \code{bdExport()} again with the same
+arguments and it continues where it stopped. The progress file is
+removed when the export completes.
+}
+
+\section{Locks}{
 
 While an export runs, \code{paste0(file, ".lock")} keeps other R sessions from
 exporting to the same file. The lock is removed when \code{bdExport()} ends,
-including on errors and interruptions. If R itself crashes, the lock is
-left behind; bdiver detects that its process no longer runs and replaces
-it. On Windows this check uses the \code{tasklist} command, and it is not
-possible for locks created on another computer (e.g. on a network
-drive). In those cases \code{bdExport()} stops with the path of the lock;
-make sure no export is running, delete it with
+including after errors and interruptions. If R itself crashes, the lock
+is left behind; the next \code{bdExport()} finds that the R process that made
+it has ended and replaces it. On Windows this check uses the \code{tasklist}
+command. It cannot be done when \code{tasklist} is unavailable or when the
+lock was made on another computer (for example on a network drive). In
+those cases \code{bdExport()} stops and shows the path of the lock: make sure
+no export of the file is running, delete the lock with
 \code{unlink(paste0(file, ".lock"), recursive = TRUE)}, and run \code{bdExport()}
 again.
-
-The BacDive release of the exported records is reported when the export
-finishes (see \code{\link[=bdRelease]{bdRelease()}}).
-
-A full export makes roughly 2,000 requests and takes about an hour.
 }
+
+\section{Releases}{
+
+When the export finishes, \code{bdExport()} reports the BacDive release of
+the exported records (see \code{\link[=bdRelease]{bdRelease()}}).
+}
+
 \examples{
-if (interactive()) {
-    out <- tempfile(fileext = ".csv")
-    ids <- bdSearchTaxon("Phaeobacter")
-    bdExport(out, ids = ids)
-    head(read.csv(out))
+out <- tempfile(fileext = ".csv")
+bdExport(out, ids = c(24493, 23324), cache = FALSE)
+read.csv(out)[, 1:6]
 
-    ## Custom columns and predicted traits
-    fields <- c(bdDefaultFields()[c("bacdive_id", "taxon_name")],
-        bdPredictionFields(c("gram-positive", "motility")))
-    bdExport(out, fields, ids = ids, predictions = TRUE,
-        overwrite = TRUE)
+## Your own columns, with predicted traits
+fields <- c(bdDefaultFields()[c("bacdive_id", "taxon_name")],
+    bdPredictionFields(c("gram-positive", "motility")))
+bdExport(out, fields, ids = 24493, predictions = TRUE, overwrite = TRUE,
+    cache = FALSE)
+read.csv(out)
+
+if (interactive()) {
+    ## All of BacDive, in the format used by bugphyzz
+    bdExport("bacdive.csv")
 }
 
+}
+\seealso{
+\link{bdCache}, \code{\link[=bdRelease]{bdRelease()}}
 }

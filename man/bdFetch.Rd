@@ -4,7 +4,7 @@
 \alias{bdFetch}
 \title{Retrieve BacDive strain records}
 \usage{
-bdFetch(ids, predictions = FALSE, cache = .bdUseCache())
+bdFetch(ids, predictions = FALSE, cache = NULL)
 }
 \arguments{
 \item{ids}{\code{integer()} BacDive IDs, e.g. from \code{\link[=bdSearchTaxon]{bdSearchTaxon()}}.}
@@ -12,8 +12,9 @@ bdFetch(ids, predictions = FALSE, cache = .bdUseCache())
 \item{predictions}{\code{logical(1)} Include AI-predicted traits? Defaults to
 \code{FALSE}.}
 
-\item{cache}{\code{logical(1)} Use the download cache? By default, the choice
-made with \code{\link[=bdCacheEnable]{bdCacheEnable()}} or \code{\link[=bdCacheDisable]{bdCacheDisable()}}. See \link{bdCache}.}
+\item{cache}{\code{logical(1)} or \code{NULL} Use the download cache? \code{NULL}
+(default) uses your saved choice; if you have not chosen yet, an
+interactive session asks once. See \link{bdCache}.}
 }
 \value{
 A named \code{list} with one element per strain found, named by
@@ -35,11 +36,9 @@ values carry a \code{"confidence"} element; \code{\link[=bdValues]{bdValues()}} 
 them unless asked not to.
 }
 \examples{
-if (interactive()) {
-    records <- bdFetch(c(24493, 12))
-    names(records)
-    names(records[["24493"]])
-}
+records <- bdFetch(c(24493, 12), cache = FALSE)
+names(records)
+names(records[["24493"]])
 
 }
 \seealso{

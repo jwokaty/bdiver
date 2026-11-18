@@ -20,7 +20,7 @@ test_that("bdFetch includes predictions when asked", {
 
 test_that("bdFetch splits requests into batches of 100", {
     batches <- list()
-    local_mocked_bindings(.bdFetchBatch = function(ids, predictions) {
+    local_mocked_bindings(.bdFetchBatch = function(ids, predictions, ...) {
         batches[[length(batches) + 1L]] <<- ids
         list()
     })
@@ -38,6 +38,8 @@ test_that("search functions return integer IDs", {
         expect_identical(
             bdSearchTaxon("Phaeobacter", "Phaeobacter gallaeciensis"), ids
         )
+        expect_error(bdSearchTaxon("Phaeobacter gallaeciensis"),
+            "separate arguments")
         expect_identical(bdSearchCultureCollection("DSM 26640"), 24493L)
         expect_true(24493L %in% bdSearch16S("KC176239"))
         expect_true(24493L %in% bdSearchGenome("GCA_000511385"))

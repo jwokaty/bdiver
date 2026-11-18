@@ -1,6 +1,7 @@
 ## Records the BacDive API responses replayed by tests/testthat/test-api.R.
 ## Run from the package root with network access:
 ##     Rscript inst/scripts/record-test-fixtures.R
+## Requires the httptest2 and pkgload packages.
 library(httptest2)
 pkgload::load_all(".", quiet = TRUE)
 options(bdiver.rate = 1)

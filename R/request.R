@@ -4,7 +4,8 @@
     getOption("bdiver.base_url", "https://api.bacdive.dsmz.de/v2/")
 }
 
-## Maximum number of BacDive IDs accepted by the fetch endpoint.
+## Maximum number of BacDive IDs accepted by the fetch endpoint. Exports
+## and the cache work in batches of this size.
 .bdMaxIds <- function() {
     100L
 }
@@ -32,18 +33,22 @@
 }
 
 ## Build a request. `url` may be a path relative to the base URL or a full
-## URL (as returned in the `next` field of paginated responses).
-.bdRequest <- function(url, query = list()) {
+## URL (as returned in the `next` field of paginated responses). Requests
+## are retried after server or network errors and limited to
+## getOption("bdiver.rate") per second.
+.bdRequest <- function(url, query = list(),
+    timeout = getOption("bdiver.timeout", 300),
+    maxTries = getOption("bdiver.max_tries", 5L)) {
     if (!grepl("^https?://", url))
         url <- paste0(.bdBaseUrl(), url)
     req <- httr2::request(url)
     req <- httr2::req_url_query(req, !!!query)
     req <- httr2::req_headers(req, Accept = "application/json")
     req <- httr2::req_user_agent(req, .bdUserAgent())
-    req <- httr2::req_timeout(req, getOption("bdiver.timeout", 300))
+    req <- httr2::req_timeout(req, timeout)
     req <- httr2::req_retry(
         req,
-        max_tries = getOption("bdiver.max_tries", 5L),
+        max_tries = maxTries,
         is_transient = function(resp) {
             httr2::resp_status(resp) %in% c(429L, 500L, 502L, 503L, 504L)
         },
@@ -55,8 +60,8 @@
 
 ## Perform a request and return the parsed JSON body. Objects are returned
 ## as named lists and arrays as unnamed lists.
-.bdGet <- function(url, query = list()) {
-    resp <- httr2::req_perform(.bdRequest(url, query))
+.bdGet <- function(url, query = list(), ...) {
+    resp <- httr2::req_perform(.bdRequest(url, query, ...))
     httr2::resp_body_json(resp, simplifyVector = FALSE)
 }
 

@@ -23,15 +23,17 @@ bdCacheClear(ask = interactive())
 \item{predictions}{\code{logical(1)} List records cached with AI predictions
 instead of those without? Defaults to \code{FALSE}.}
 
-\item{ask}{\code{logical(1)} Ask for confirmation before deleting? Defaults to
-\code{TRUE} in interactive sessions.}
+\item{ask}{\code{logical(1)} Ask for confirmation before deleting? Defaults
+to \code{TRUE} in interactive sessions.}
 }
 \value{
 \itemize{
-\item \code{bdCacheInfo()}: a \code{list} with the cache \code{path}, whether it is
-\code{enabled}, the number of cached \code{strains} and \code{strainsWithPredictions},
-\code{releases} (the number of cached strains per BacDive release), its
-\code{size} in bytes, and when it was last \code{updated}.
+\item \code{bdCacheInfo()}: a \code{list} (printed as a short description) with the
+cache \code{path}; whether caching is
+\code{enabled}; the number of cached \code{strains}, and of those cached with
+predictions (\code{strainsWithPredictions}); the BacDive \code{releases} of the
+cached records; the \code{size} in bytes; and when the cache was \code{created}
+and last \code{updated}.
 \item \code{bdCachedIds()}: an \code{integer} vector of cached BacDive IDs.
 \item \code{bdCacheEnable()}, \code{bdCacheDisable()}, \code{bdCacheClear()}: \code{NULL},
 invisibly.
@@ -39,39 +41,51 @@ invisibly.
 }
 \description{
 bdiver can keep the records it downloads in a cache managed by
-\pkg{BiocFileCache}, so that later calls to
-\code{\link[=bdFetch]{bdFetch()}}, \code{\link[=bdExport]{bdExport()}}, or searches followed by a fetch reuse them
-instead of downloading them again. Records are cached in blocks of 100
-BacDive IDs, and IDs that do not exist in BacDive are remembered too.
-Records fetched with \code{predictions = TRUE} are cached separately.
+\pkg{BiocFileCache}. Later calls to \code{\link[=bdFetch]{bdFetch()}} and \code{\link[=bdExport]{bdExport()}} then
+read those records from the cache instead of downloading them again,
+whichever search they came from.
 }
-\details{
+\section{Turning the cache on or off}{
+
 The first time bdiver downloads data in an interactive session, it asks
 whether to use the cache and remembers the answer. Change it at any time
-with \code{bdCacheEnable()} and \code{bdCacheDisable()}, or for the current session
-only with \code{options(bdiver.cache = TRUE)} or \code{FALSE}. Non-interactive
-sessions do not cache unless enabled.
-
-The cache is stored in \code{tools::R_user_dir("bdiver", "cache")};
-set \code{options(bdiver.cache_dir = )} to use another directory. Your choice
-to use the cache is stored in \code{tools::R_user_dir("bdiver", "config")}.
+with \code{bdCacheEnable()} or \code{bdCacheDisable()}, or for the current session
+only with \code{options(bdiver.cache = TRUE)} or \code{FALSE}. Sessions that are
+not interactive do not cache unless the cache was enabled.
 }
+
+\section{What is cached}{
+
+Records are cached in blocks of 100 BacDive IDs. IDs that do not exist
+in BacDive are remembered too, so they are not requested again. Records
+fetched with \code{predictions = TRUE} are cached separately. A cache of all
+of BacDive takes about 1 GB.
+}
+
 \section{New BacDive releases}{
 
-BacDive is updated in releases (see \code{\link[=bdRelease]{bdRelease()}}), and bdiver records
-the release of every cached record. The first time a session uses the
-cache, bdiver looks up the current release (one small request). Records
-cached from an older release are then not used: they are downloaded
-again when needed, and bdiver says so once per session. Run
-\code{bdCacheClear()} to remove all old records at once. \code{bdCacheInfo()} shows
-which releases the cache holds, and the message shown when bdiver is
-loaded names them too.
+BacDive is updated in releases (see \code{\link[=bdRelease]{bdRelease()}}). The cache keeps its
+records until you clear it, so results do not change unexpectedly. When
+bdiver is loaded in an interactive session, and the first time the cache
+is used in a session, bdiver checks whether a newer release is available
+and tells you. The check is a single small request that gives up after
+five seconds, so it does not hold you up when BacDive is unreachable.
 
-To keep working with cached records from an older release, for example to
-reproduce an analysis, set \code{options(bdiver.check_release = FALSE)}. When
-BacDive cannot be reached, cached records are used as they are.
+To move to the new release, clear the cache with \code{bdCacheClear()};
+records are then downloaded again as you use them.
+Until then, strains not yet in the cache are downloaded from the new
+release, so a table may combine releases; \code{\link[=bdExport]{bdExport()}} reports this.
 
-A complete cache of BacDive takes about 1 GB.
+BacDive's web service does not send expiry information (such as
+\code{Expires} or \code{Cache-Control} headers), so bdiver compares releases
+instead. To skip the check, set \code{options(bdiver.check_release = FALSE)}.
+}
+
+\section{Where the cache is}{
+
+The cache is in \code{tools::R_user_dir("bdiver", "cache")}; set
+\code{options(bdiver.cache_dir = )} to use another directory. Your choice to
+use the cache is saved in \code{tools::R_user_dir("bdiver", "config")}.
 }
 
 \examples{
@@ -90,5 +104,5 @@ if (interactive()) {
 
 }
 \seealso{
-\code{\link[=bdFetch]{bdFetch()}}, \code{\link[=bdExport]{bdExport()}}
+\code{\link[=bdFetch]{bdFetch()}}, \code{\link[=bdExport]{bdExport()}}, \code{\link[=bdRelease]{bdRelease()}}
 }

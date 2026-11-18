@@ -41,13 +41,11 @@ BacDive IDs of all matching strains, following result pages as needed.
 Use \code{\link[=bdFetch]{bdFetch()}} to retrieve the full records for the returned IDs.
 }
 \examples{
-if (interactive()) {
-    ids <- bdSearchTaxon("Bacillus", "subtilis")
-    head(ids)
-    bdSearchCultureCollection("DSM 26640")
-    bdSearch16S("AF000162")
-    bdSearchGenome("GCA_006094295")
-}
+bdSearchTaxon("Phaeobacter", "gallaeciensis")
+bdSearchCultureCollection("DSM 26640")
+bdSearchCultureCollection(c("DSM 26640", "DSM 26646"))
+bdSearch16S("KC176239")
+bdSearchGenome("GCA_000511385")
 
 }
 \seealso{

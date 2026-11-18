@@ -3,7 +3,7 @@
 fakeBacDive <- function(present, release = "20260601.11") {
     env <- new.env()
     env$requests <- list()
-    env$fetch <- function(ids, predictions = FALSE) {
+    env$fetch <- function(ids, predictions = FALSE, ...) {
         env$requests[[length(env$requests) + 1L]] <- ids
         hit <- ids[ids %in% present]
         records <- lapply(hit, function(id) {

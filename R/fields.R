@@ -1,19 +1,3 @@
-## Remove markup and characters that would break a delimited file.
-.bdClean <- function(x) {
-    x <- gsub("<[^>]*>", "", x)
-    x <- gsub("[[:cntrl:]]+", " ", x)
-    trimws(gsub("\"", "'", x, fixed = TRUE))
-}
-
-## Collapse any field result to a single string (NA when empty).
-.bdScalar <- function(x, collapse = ";") {
-    x <- as.character(unlist(x, use.names = FALSE))
-    x <- x[!is.na(x) & nzchar(x)]
-    if (!length(x))
-        return(NA_character_)
-    paste(.bdClean(x), collapse = collapse)
-}
-
 #' Define a column of a BacDive table
 #'
 #' `bdField()` creates a field: a function that takes one BacDive record
@@ -39,7 +23,10 @@
 #'     `FALSE`.
 #'
 #' @return A `function(record)` returning `character(1)`, `NA` when the
-#'     record has no value.
+#'     record has no value. The function stops with an error when `path`
+#'     leads to groups of values rather than to single values; extend the
+#'     path to the element you need, e.g. `c("General", "NCBI tax id",
+#'     "NCBI tax id")` instead of `c("General", "NCBI tax id")`.
 #'
 #' @seealso [bdDefaultFields()], [bdExtract()]
 #'
@@ -71,11 +58,12 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
             vals <- utils::head(vals, 1L)
         .bdScalar(vals, collapse)
     }
-    .bdDescribe(field, path, predicted)
+    .bdAnnotateField(field, path, predicted)
 }
 
-## Record where a field's values come from; reported by bdExtract().
-.bdDescribe <- function(field, path, predicted) {
+## Attach to a field the BacDive path its values come from and whether they
+## are predicted; bdExtract() reports these in mcols().
+.bdAnnotateField <- function(field, path, predicted) {
     attr(field, "bdiver_path") <- paste(path, collapse = " > ")
     attr(field, "bdiver_predicted") <- predicted
     field
@@ -96,7 +84,7 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
         }, character(1))
         .bdScalar(unique(vals[nzchar(vals)]), collapse)
     }
-    .bdDescribe(field, path, FALSE)
+    .bdAnnotateField(field, path, FALSE)
 }
 
 ## Named NCBI taxonomy IDs of a record, named by matching level.
@@ -113,11 +101,15 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
     stats::setNames(ids, lvl)
 }
 
+## The strain's name, taken from the start of its description, e.g.
+## "Phaeobacter gallaeciensis BS 107" from "Phaeobacter gallaeciensis BS 107
+## is a Gram-negative, motile, rod-shaped bacterium ...". Without a
+## description, the species and strain designation are used.
 .bdTaxonName <- function(record) {
     desc <- bdValues(record, c("General", "description"))
     if (length(desc))
         return(.bdScalar(sub(" is (a|an) .*$", "", desc[[1L]])))
-    tax <- c("Name and taxonomic classification")
+    tax <- "Name and taxonomic classification"
     .bdScalar(paste(
         bdValues(record, c(tax, "species")),
         bdValues(record, c(tax, "strain designation"))
@@ -157,9 +149,10 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
 #' [bdExport()] by default. Its columns match the BacDive table used by
 #' bugphyzz: strain and taxonomy identifiers followed by one column per
 #' attribute. Where BacDive reports several observations of a single-valued
-#' attribute, the first one is kept; list-like attributes (halophily,
-#' hemolysis, metabolite production and utilization) keep all observations
-#' separated by `";"`.
+#' attribute, the first one is kept. Columns that can hold several values
+#' keep all of them, separated by `";"`: the 16S and genome sequence
+#' accessions, halophily, hemolysis, and metabolite production and
+#' utilization.
 #'
 #' `bdPredictionFields()` returns fields for AI-predicted traits. Each trait
 #' gives two columns, `predicted_<trait>` and
@@ -303,7 +296,7 @@ bdDefaultFields <- function(predictions = FALSE) {
             return(NA_character_)
         .bdScalar(hit[[1L]][[element]])
     }
-    .bdDescribe(field, c("Genome-based predictions", "predictions",
+    .bdAnnotateField(field, c("Genome-based predictions", "predictions",
         paste0(element, " [trait = ", trait, "]")), TRUE)
 }
 
@@ -311,11 +304,13 @@ bdDefaultFields <- function(predictions = FALSE) {
 #' @export
 bdPredictionFields <- function(traits = .bdPredictedTraits()) {
     stopifnot(is.character(traits))
-    cols <- paste0("predicted_", gsub("[^a-z0-9]+", "_", tolower(traits)))
-    fields <- c(
-        lapply(traits, .bdPredictionField, element = "prediction"),
-        lapply(traits, .bdPredictionField, element = "confidence")
-    )
-    names(fields) <- c(cols, paste0(cols, "_confidence"))
-    fields[order(rep(seq_along(traits), 2L))]
+    fields <- list()
+    for (trait in traits) {
+        column <- paste0("predicted_", gsub("[^a-z0-9]+", "_",
+            tolower(trait)))
+        fields[[column]] <- .bdPredictionField(trait, "prediction")
+        fields[[paste0(column, "_confidence")]] <-
+            .bdPredictionField(trait, "confidence")
+    }
+    fields
 }

@@ -14,7 +14,7 @@
   `bdCacheDisable()`, `bdCacheInfo()`, `bdCachedIds()`, `bdCacheClear()`.
 * `bdExport()` locks the output file so that only one R session can write
   to it, and replaces locks left by crashed sessions.
-* `bdRelease()` reports the current BacDive release. Cached records from an
-  older release are downloaded again when used; the release is shown on
-  attach, by `bdCacheInfo()`, in `bdExtract()` metadata, and after
-  `bdExport()`.
+* `bdRelease()` reports the current BacDive release. Cached records are
+  kept until the user clears the cache; bdiver says when a newer release is
+  available. `bdCacheInfo()` and the startup message describe the cache's
+  location, size, release, creation and update dates, and how to clear it.

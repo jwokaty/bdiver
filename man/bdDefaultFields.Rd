@@ -24,9 +24,10 @@ A named \code{list} of fields (see \code{\link[=bdField]{bdField()}}).
 \code{\link[=bdExport]{bdExport()}} by default. Its columns match the BacDive table used by
 bugphyzz: strain and taxonomy identifiers followed by one column per
 attribute. Where BacDive reports several observations of a single-valued
-attribute, the first one is kept; list-like attributes (halophily,
-hemolysis, metabolite production and utilization) keep all observations
-separated by \code{";"}.
+attribute, the first one is kept. Columns that can hold several values
+keep all of them, separated by \code{";"}: the 16S and genome sequence
+accessions, halophily, hemolysis, and metabolite production and
+utilization.
 }
 \details{
 \code{bdPredictionFields()} returns fields for AI-predicted traits. Each trait

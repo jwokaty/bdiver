@@ -1,8 +1,12 @@
-## BacDive releases. Every record's DOI ends with the release it belongs to,
-## e.g. "10.13145/bacdive24493.20260601.11" is from release "20260601.11".
+## BacDive releases
+##
+## Every BacDive record ends its DOI with the release it belongs to; for
+## example "10.13145/bacdive24493.20260601.11" is from release
+## "20260601.11". The web service sends no expiry headers, so comparing
+## releases is how bdiver tells whether cached records are out of date.
 
-## Session state: the current release (once looked up) and whether the user
-## was told about records cached from an older release.
+## Session state: the current release once looked up, and whether the user
+## has been told about a newer release.
 .bdState <- new.env(parent = emptyenv())
 
 .bdRecordRelease <- function(record) {
@@ -10,18 +14,28 @@
     if (!is.character(doi) || length(doi) != 1L)
         return(NA_character_)
     release <- sub("^.*/bacdive[0-9]+\\.", "", doi)
-    if (identical(release, doi)) NA_character_ else release
+    if (identical(release, doi))
+        return(NA_character_)
+    release
 }
 
+## The distinct releases of a list of records.
 .bdReleases <- function(records) {
     releases <- vapply(records, .bdRecordRelease, character(1),
         USE.NAMES = FALSE)
     sort(unique(releases[!is.na(releases)]))
 }
 
-## Look up the current release by fetching a single small record.
-.bdLatestRelease <- function() {
-    record <- .bdFetchBatch(1L)
+## Look up the current release by downloading one small record: BacDive
+## ID 1, the first strain in BacDive. With `quick = TRUE` the request is not
+## retried and gives up after 5 seconds, so that a slow or unreachable
+## BacDive never holds up loading bdiver or reading the cache.
+.bdLatestRelease <- function(quick = FALSE) {
+    if (quick) {
+        record <- .bdFetchBatch(1L, timeout = 5, maxTries = 1L)
+    } else {
+        record <- .bdFetchBatch(1L)
+    }
     if (!length(record))
         return(NA_character_)
     .bdRecordRelease(record[[1L]])
@@ -31,7 +45,8 @@
 #'
 #' BacDive is updated in releases, and each record states the release it
 #' belongs to. `bdRelease()` asks BacDive for the current release. bdiver
-#' uses it to notice when cached records are out of date (see [bdCache]).
+#' uses it to tell you when the cache holds records from an older release
+#' (see [bdCache]).
 #'
 #' @param refresh `logical(1)` Ask BacDive again, even if the release was
 #'     already looked up in this R session? Defaults to `FALSE`.
@@ -40,14 +55,16 @@
 #'     BacDive cannot be reached.
 #'
 #' @examples
-#' if (interactive()) {
-#'     bdRelease()
-#' }
+#' bdRelease()
 #'
 #' @export
 bdRelease <- function(refresh = FALSE) {
+    .bdCurrentRelease(refresh = refresh)
+}
+
+.bdCurrentRelease <- function(refresh = FALSE, quick = FALSE) {
     if (refresh || is.null(.bdState[["release"]])) {
-        release <- tryCatch(.bdLatestRelease(),
+        release <- tryCatch(.bdLatestRelease(quick),
             error = function(e) NA_character_)
         if (is.na(release))
             return(release)
@@ -56,20 +73,30 @@ bdRelease <- function(refresh = FALSE) {
     .bdState[["release"]]
 }
 
-## The release to keep the cache at, or NA when it should not be checked
-## (BacDive unreachable, or options(bdiver.check_release = FALSE)).
-.bdCheckRelease <- function() {
+## Releases in the cache that differ from the current one, or an empty
+## vector when there are none, or when the check is turned off or BacDive
+## cannot be reached.
+.bdOutdatedReleases <- function() {
     if (!isTRUE(getOption("bdiver.check_release", TRUE)))
-        return(NA_character_)
-    bdRelease()
+        return(character())
+    cached <- .bdCacheSummary()[["releases"]]
+    if (!length(cached))
+        return(character())
+    current <- .bdCurrentRelease(quick = TRUE)
+    if (is.na(current))
+        return(character())
+    setdiff(cached, current)
 }
 
-.bdNotifyStale <- function(old, current) {
+## Tell the user, once per session, when a newer release is available.
+## The startup message counts as telling them.
+.bdNotifyNewRelease <- function() {
     if (isTRUE(.bdState[["notified"]]))
         return(invisible(NULL))
     .bdState[["notified"]] <- TRUE
-    message("BacDive has a new release (", current, "). Records cached ",
-        "from release ", paste(old, collapse = ", "), " are downloaded ",
-        "again as they are used.\nTo remove them all now, run ",
-        "bdCacheClear().")
+    if (length(.bdOutdatedReleases()))
+        message("A newer BacDive release (", .bdState[["release"]], ") is ",
+            "available. The cache keeps its records until you clear it ",
+            "with bdCacheClear(); see ?bdCache.")
+    invisible(NULL)
 }

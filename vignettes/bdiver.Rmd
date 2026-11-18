@@ -22,6 +22,13 @@ online <- tryCatch({
         httr2::request("https://api.bacdive.dsmz.de/v2/fetch/24493"), 20))
     TRUE
 }, error = function(e) FALSE)
+## Use a temporary cache and settings, so building the vignette never
+## changes the reader's own cache.
+options(
+    bdiver.cache = FALSE,
+    bdiver.cache_dir = file.path(tempdir(), "bdiver-cache"),
+    bdiver.config_dir = file.path(tempdir(), "bdiver-config")
+)
 ```
 
 # Introduction
@@ -95,8 +102,9 @@ record$General$description
 BacDive offers genome-based predictions of some traits. They are excluded
 unless you opt in with `predictions = TRUE`:
 
-```{r predictions, eval = FALSE}
-records <- bdFetch(ids, predictions = TRUE)
+```{r predictions, eval = online}
+predicted <- bdFetch(24493, predictions = TRUE)
+names(predicted[["24493"]][["Genome-based predictions"]])
 ```
 
 Predicted values appear in a `"Genome-based predictions"` section and also
@@ -240,32 +248,37 @@ whatever search they come from. This is useful when you
 * work offline with strains you have already downloaded.
 
 The first time bdiver downloads data in an interactive session it asks
-whether to cache, and remembers your answer. You can also decide yourself:
+whether to cache, and remembers your answer. You can also decide yourself
+with `bdCacheEnable()` or `bdCacheDisable()`, or for one session with
+`options(bdiver.cache = TRUE)` or `FALSE`. Here the cache is turned on:
 
-```{r cache-choice, eval = FALSE}
+```{r cache-enable}
 bdCacheEnable()
-bdCacheDisable()
-options(bdiver.cache = FALSE)   # for this session only
-```
-
-Each time bdiver is loaded it reports the size of the cache. These functions
-show what it holds and delete it:
-
-```{r cache-manage, eval = FALSE}
-bdCacheInfo()          # location, number of strains, size, last update
-bdCachedIds()          # BacDive IDs in the cache
-bdCacheClear()         # delete everything
 ```
 
 For example, records from several searches can be combined into a
-`DataFrame` without downloading any strain twice:
+`DataFrame`; strains found by both searches are downloaded only once:
 
-```{r cache-example, eval = FALSE}
+```{r cache-example, eval = online}
 ids <- c(bdSearchTaxon("Phaeobacter"), bdSearchTaxon("Ruegeria"))
-tbl <- bdExtract(bdFetch(ids))
+tbl <- bdExtract(bdFetch(ids, cache = TRUE))
+dim(tbl)
+```
 
-## Later, offline: everything downloaded so far
-tbl <- bdExtract(bdFetch(bdCachedIds()))
+Later, even offline, a table can be built from everything downloaded so
+far:
+
+```{r cache-offline, eval = online}
+tbl <- bdExtract(bdFetch(bdCachedIds(), cache = TRUE))
+dim(tbl)
+```
+
+`bdCacheInfo()` describes the cache; the same description is shown when
+bdiver is loaded. `bdCacheClear()` deletes the cache.
+
+```{r cache-info, eval = online}
+bdCacheInfo()
+bdCacheClear(ask = FALSE)
 ```
 
 A cache of all of BacDive takes about 1 GB. Records fetched with
@@ -280,16 +293,30 @@ comes from. `bdRelease()` returns the current one:
 bdRelease()
 ```
 
-The first time a session uses the cache, bdiver looks up the current
-release. If the cache holds records from an older release, bdiver says so
-once and downloads those records again as you use them, so a table or
-export never mixes old and new data. `bdCacheClear()` removes all old
-records at once. The release is also shown when bdiver is loaded, by
-`bdCacheInfo()`, in the `metadata()` of tables from `bdExtract()`, and at
-the end of each `bdExport()`.
+Cached records are kept until you decide to clear the cache, so your
+results do not change unexpectedly. When bdiver is loaded in an
+interactive session, it checks whether a newer BacDive release is
+available and adds a line to its description of the cache. For example,
+with a cache made before a new release:
 
-To keep using records from an older release, for example to reproduce an
-earlier analysis, turn the check off:
+```
+bdiver cache: ~/.cache/R/bdiver
+    19 strains (98.7 kB) from BacDive release 20251201.10
+    Created 2026-01-12; last updated 2026-03-02
+    A newer BacDive release (20260601.11) is available.
+    To clear the cache, run bdCacheClear(). See ?bdCache for details.
+```
+
+The same notice is given the first time the cache is used in a session.
+To move to the new release, run `bdCacheClear()`; records are then
+downloaded again as you use them. Until you do, strains that are not in the
+cache yet come from the new release, so a table can combine releases. The
+release of a table is recorded in `metadata()`, and `bdExport()` reports it
+when it finishes.
+
+BacDive's web service does not send expiry information (`Expires` or
+`Cache-Control` headers), which is why bdiver compares releases instead. To
+skip the check, for example when working offline:
 
 ```{r keep-release, eval = FALSE}
 options(bdiver.check_release = FALSE)

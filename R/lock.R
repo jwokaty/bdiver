@@ -35,6 +35,9 @@
             return(NA)
         return(any(grepl(paste0("\"", pid, "\""), out, fixed = TRUE)))
     }
+    ## Signal 0 only checks that the process exists. It also fails for a
+    ## process owned by another user; locks are expected to belong to the
+    ## user running the export.
     tools::pskill(pid, signal = 0L)
 }
 

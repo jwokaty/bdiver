@@ -17,11 +17,10 @@ BacDive cannot be reached.
 \description{
 BacDive is updated in releases, and each record states the release it
 belongs to. \code{bdRelease()} asks BacDive for the current release. bdiver
-uses it to notice when cached records are out of date (see \link{bdCache}).
+uses it to tell you when the cache holds records from an older release
+(see \link{bdCache}).
 }
 \examples{
-if (interactive()) {
-    bdRelease()
-}
+bdRelease()
 
 }

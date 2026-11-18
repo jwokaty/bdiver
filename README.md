@@ -62,10 +62,10 @@ bdCachedIds()     # IDs available offline
 bdCacheClear()    # delete the cache
 ```
 
-BacDive is updated in releases (`bdRelease()` shows the current one). When
-bdiver finds that cached records come from an older release, it says so and
-downloads them again as they are used. Set
-`options(bdiver.check_release = FALSE)` to keep using an older release.
+BacDive is updated in releases (`bdRelease()` shows the current one).
+Cached records are kept until you clear the cache. When bdiver is loaded it
+shows the cache's location, size, release and dates, tells you if a newer
+BacDive release is available, and how to clear the cache.
 
 ## Interrupted exports and Windows
 

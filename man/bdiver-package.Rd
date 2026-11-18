@@ -23,11 +23,22 @@ delimited file.
 }
 \section{Options}{
 
+Set these with \code{options()}, for example \code{options(bdiver.rate = 0.5)}.
 \itemize{
+\item \code{bdiver.cache}: use the download cache (\code{TRUE}/\code{FALSE}) in this
+session, overriding your saved choice. See \link{bdCache}.
+\item \code{bdiver.cache_dir}: directory of the cache (default
+\code{tools::R_user_dir("bdiver", "cache")}).
+\item \code{bdiver.config_dir}: directory where your choice to cache is saved
+(default \code{tools::R_user_dir("bdiver", "config")}).
+\item \code{bdiver.check_release}: check for newer BacDive releases (default
+\code{TRUE}). See \code{\link[=bdRelease]{bdRelease()}}.
 \item \code{bdiver.rate}: maximum requests per second (default 1).
 \item \code{bdiver.max_tries}: attempts per request, including retries after
 server or network errors (default 5).
 \item \code{bdiver.timeout}: request timeout in seconds (default 300).
+\item \code{bdiver.base_url}: address of the BacDive API (default
+\code{"https://api.bacdive.dsmz.de/v2/"}).
 }
 }
 

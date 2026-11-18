@@ -45,6 +45,7 @@ test_that("bdCacheInfo reports and bdCacheClear deletes the cache", {
     info <- bdCacheInfo()
     expect_identical(info$strains, 4L)
     expect_identical(info$strainsWithPredictions, 0L)
+    expect_identical(info$releases, "20260601.11")
     expect_true(info$size > 0)
     expect_s3_class(info$updated, "POSIXct")
     expect_true(info$enabled)
@@ -60,7 +61,9 @@ test_that("the cache choice is remembered", {
     expect_null(.bdCacheChoice())
     expect_false(.bdUseCache())   # not interactive: no cache, no question
     expect_null(.bdCacheChoice())
-    expect_match(.bdStartupMessage(), "bdCacheEnable")
+    expect_null(.bdStartupMessage(interactive = FALSE))
+    expect_match(.bdStartupMessage(interactive = TRUE), "bdCacheEnable()",
+        fixed = TRUE)
     expect_message(bdCacheEnable(), "Caching")
     expect_true(.bdUseCache())
     expect_message(bdCacheDisable(), "bdCacheClear")
@@ -69,11 +72,21 @@ test_that("the cache choice is remembered", {
     expect_true(.bdUseCache())
 })
 
-test_that("the startup message reports the cache size", {
+test_that("the startup message reports the cache", {
     localCache()
     local_mocked_bindings(.bdFetchBatch = fakeBacDive(1)$fetch)
     expect_null(.bdStartupMessage())
     bdFetch(1)
-    expect_match(.bdStartupMessage(), "bdiver cache: [0-9.]+ [kMG]?B")
-    expect_match(.bdStartupMessage(), "bdCacheClear()", fixed = TRUE)
+    expect_match(.bdStartupMessage(), "bdiver cache: ")
+    withr::local_options(bdiver.cache = FALSE)
+    expect_match(.bdStartupMessage(), "Caching is turned off")
+})
+
+test_that("bdCacheInfo prints a description of the cache", {
+    localCache()
+    expect_output(print(bdCacheInfo()), "The cache is empty")
+    local_mocked_bindings(.bdFetchBatch = fakeBacDive(1:5)$fetch)
+    bdFetch(1:5)
+    expect_output(print(bdCacheInfo()), "5 strains .* from BacDive release")
+    expect_output(print(bdCacheInfo()), "bdCacheClear()", fixed = TRUE)
 })

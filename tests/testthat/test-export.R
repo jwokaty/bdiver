@@ -27,7 +27,7 @@ test_that("bdExport resumes an interrupted export", {
     out <- withr::local_tempfile(fileext = ".csv")
     fields <- list(id = c("General", "BacDive-ID"))
     calls <- 0L
-    flaky <- function(ids, predictions = FALSE) {
+    flaky <- function(ids, predictions = FALSE, ...) {
         calls <<- calls + 1L
         if (calls == 3L)
             stop("connection lost")
@@ -46,7 +46,7 @@ test_that("bdExport resumes an interrupted export", {
 
 test_that("bdExport requests predictions only when asked", {
     seen <- logical()
-    spy <- function(ids, predictions = FALSE) {
+    spy <- function(ids, predictions = FALSE, ...) {
         seen <<- c(seen, predictions)
         list()
     }
@@ -91,7 +91,7 @@ test_that("bdExport replaces locks left by crashed sessions", {
 
 test_that("the lock is released when an export fails", {
     out <- withr::local_tempfile(fileext = ".csv")
-    local_mocked_bindings(.bdFetchBatch = function(ids, predictions) {
+    local_mocked_bindings(.bdFetchBatch = function(ids, ...) {
         stop("offline")
     })
     expect_error(bdExport(out, ids = 1, verbose = FALSE), "offline")
@@ -111,4 +111,22 @@ test_that("a cached export downloads nothing the second time", {
         verbose = FALSE)
     expect_identical(length(fake$requests), first)
     expect_identical(read.csv(out)$id, c(3L, 120L, 350L))
+})
+
+test_that("an export only resumes with the same IDs, separator and options", {
+    out <- withr::local_tempfile(fileext = ".csv")
+    fields <- list(id = c("General", "BacDive-ID"))
+    local_mocked_bindings(.bdFetchBatch = function(ids, ...) stop("cut"))
+    expect_error(bdExport(out, fields, ids = c(1, 4), verbose = FALSE),
+        "cut")
+    local_mocked_bindings(.bdFetchBatch = fakeBacDive(1:10)$fetch)
+    ## Same number and sum of IDs, but different IDs.
+    expect_error(bdExport(out, fields, ids = c(2, 3)), "different")
+    expect_error(bdExport(out, fields, ids = c(4, 1)), "different")
+    expect_error(bdExport(out, fields, ids = c(1, 4), sep = "\t"),
+        "different")
+    expect_error(bdExport(out, fields, ids = c(1, 4), predictions = TRUE),
+        "different")
+    bdExport(out, fields, ids = c(1, 4), verbose = FALSE)
+    expect_identical(read.csv(out)$id, c(1L, 4L))
 })

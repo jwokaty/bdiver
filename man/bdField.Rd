@@ -21,7 +21,9 @@ kept. Defaults to \code{";"}.}
 }
 \value{
 A \verb{function(record)} returning \code{character(1)}, \code{NA} when the
-record has no value.
+record has no value. The function stops with an error when \code{path}
+leads to groups of values rather than to single values; extend the
+path to the element you need, e.g. \code{c("General", "NCBI tax id", "NCBI tax id")} instead of \code{c("General", "NCBI tax id")}.
 }
 \description{
 \code{bdField()} creates a field: a function that takes one BacDive record

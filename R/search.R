@@ -47,13 +47,11 @@
 #' @seealso [bdFetch()]
 #'
 #' @examples
-#' if (interactive()) {
-#'     ids <- bdSearchTaxon("Bacillus", "subtilis")
-#'     head(ids)
-#'     bdSearchCultureCollection("DSM 26640")
-#'     bdSearch16S("AF000162")
-#'     bdSearchGenome("GCA_006094295")
-#' }
+#' bdSearchTaxon("Phaeobacter", "gallaeciensis")
+#' bdSearchCultureCollection("DSM 26640")
+#' bdSearchCultureCollection(c("DSM 26640", "DSM 26646"))
+#' bdSearch16S("KC176239")
+#' bdSearchGenome("GCA_000511385")
 #'
 #' @name bdSearch
 NULL
@@ -61,15 +59,22 @@ NULL
 #' @rdname bdSearch
 #' @export
 bdSearchTaxon <- function(genus, species = NULL, subspecies = NULL) {
-    parts <- c(genus, species, subspecies)
-    parts <- unlist(strsplit(trimws(parts), "\\s+"))
-    parts <- parts[!parts %in% c("subsp.", "subsp")]
-    ## Allow binomials such as species = "Bacillus subtilis".
-    parts <- parts[!(duplicated(parts) & parts == parts[1])]
-    if (length(parts) < 1L || length(parts) > 3L)
-        stop("provide a genus and, optionally, species and subspecies",
+    genus <- trimws(genus)
+    ## Accept a binomial as species, e.g. species = "Bacillus subtilis".
+    if (!is.null(species)) {
+        species <- trimws(species)
+        if (startsWith(species, paste0(genus, " ")))
+            species <- trimws(substring(species, nchar(genus) + 1L))
+    }
+    ## Accept "subsp. subtilis" as subspecies.
+    if (!is.null(subspecies))
+        subspecies <- sub("^subsp\\.?\\s+", "", trimws(subspecies))
+    taxon <- c(genus, species, subspecies)
+    if (length(taxon) > 3L || any(grepl("\\s", taxon)))
+        stop("give the genus, species, and subspecies as separate ",
+            "arguments, e.g. bdSearchTaxon(\"Bacillus\", \"subtilis\")",
             call. = FALSE)
-    path <- paste(vapply(parts, .bdPathValue, character(1)), collapse = "/")
+    path <- paste(vapply(taxon, .bdPathValue, character(1)), collapse = "/")
     tryCatch(
         .bdCollectIds(paste0("taxon/", path)),
         httr2_http_404 = function(e) integer()
