@@ -21,12 +21,6 @@
     getOption("bdiver.cache_dir", tools::R_user_dir("bdiver", "cache"))
 }
 
-.bdConfigFile <- function() {
-    configDir <- getOption("bdiver.config_dir",
-        tools::R_user_dir("bdiver", "config"))
-    file.path(configDir, "config.rds")
-}
-
 .bdIndexFile <- function() {
     file.path(.bdCacheDir(), "bdiver-index.rds")
 }
@@ -43,28 +37,10 @@
 
 ## ---- Whether to cache --------------------------------------------------
 
-.bdReadConfig <- function() {
-    path <- .bdConfigFile()
-    if (!file.exists(path))
-        return(list())
-    tryCatch(readRDS(path), error = function(e) list())
-}
-
-.bdSaveCacheChoice <- function(useCache) {
-    path <- .bdConfigFile()
-    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-    config <- .bdReadConfig()
-    config[["cache"]] <- useCache
-    saveRDS(config, path)
-}
-
 ## TRUE or FALSE, or NULL when the user has not chosen yet. The option
 ## bdiver.cache overrides the saved choice.
 .bdCacheChoice <- function() {
-    option <- getOption("bdiver.cache")
-    if (!is.null(option))
-        return(isTRUE(option))
-    .bdReadConfig()[["cache"]]
+    .bdSetting("cache")
 }
 
 ## Whether downloads should be cached. Interactive users who have not chosen
@@ -82,7 +58,7 @@
     answer <- utils::askYesNo(question)
     if (is.na(answer))
         return(FALSE)
-    .bdSaveCacheChoice(answer)
+    .bdSaveSetting("cache", answer)
     if (!answer)
         message("Not caching. Use bdCacheEnable() to change your mind.")
     answer
@@ -285,7 +261,7 @@
 #' @section Where the cache is:
 #' The cache is in `tools::R_user_dir("bdiver", "cache")`; set
 #' `options(bdiver.cache_dir = )` to use another directory. Your choice to
-#' use the cache is saved in `tools::R_user_dir("bdiver", "config")`.
+#' use the cache is saved with your other settings; see [bdSettings()].
 #'
 #' @param ask `logical(1)` Ask for confirmation before deleting? Defaults
 #'     to `TRUE` in interactive sessions.
@@ -303,7 +279,7 @@
 #' * `bdCacheEnable()`, `bdCacheDisable()`, `bdCacheClear()`: `NULL`,
 #'   invisibly.
 #'
-#' @seealso [bdFetch()], [bdExport()], [bdRelease()]
+#' @seealso [bdSettings()], [bdFetch()], [bdExport()], [bdRelease()]
 #'
 #' @examples
 #' bdCacheInfo()
@@ -325,7 +301,7 @@ NULL
 #' @rdname bdCache
 #' @export
 bdCacheEnable <- function() {
-    .bdSaveCacheChoice(TRUE)
+    .bdSaveSetting("cache", TRUE)
     message("Caching BacDive downloads in ", .bdCacheDir())
     invisible(NULL)
 }
@@ -333,7 +309,7 @@ bdCacheEnable <- function() {
 #' @rdname bdCache
 #' @export
 bdCacheDisable <- function() {
-    .bdSaveCacheChoice(FALSE)
+    .bdSaveSetting("cache", FALSE)
     message("Not caching BacDive downloads. Cached records are kept; ",
         "delete them with bdCacheClear().")
     invisible(NULL)

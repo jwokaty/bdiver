@@ -157,12 +157,13 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
 #' `bdPredictionFields()` returns fields for AI-predicted traits. Each trait
 #' gives two columns, `predicted_<trait>` and
 #' `predicted_<trait>_confidence`. These columns are only filled for
-#' records fetched with `predictions = TRUE`.
+#' records fetched with AI-predicted traits (see [bdSettings()]).
 #'
 #' Modify the returned list to add, drop, rename, or reorder columns.
 #'
-#' @param predictions `logical(1)` Append [bdPredictionFields()]? Defaults
-#'     to `FALSE`.
+#' @param predictions `logical(1)` or `NULL` Append [bdPredictionFields()]?
+#'     `NULL` (default) uses your setting, which is off unless you turned
+#'     it on with [bdPredictionsEnable()]; see [bdSettings()].
 #' @param traits `character()` Predicted traits to include, as named in the
 #'     `"trait"` element of BacDive predictions.
 #'
@@ -183,10 +184,10 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
 #' ))
 #'
 #' @export
-bdDefaultFields <- function(predictions = FALSE) {
+bdDefaultFields <- function(predictions = NULL) {
     fields <- c(.bdIdFields(), .bdMorphologyFields(), .bdCultureFields(),
         .bdPhysiologyFields(), .bdIsolationFields(), .bdSafetyFields())
-    if (isTRUE(predictions))
+    if (.bdUsePredictions(predictions))
         fields <- c(fields, bdPredictionFields())
     fields
 }

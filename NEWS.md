@@ -18,3 +18,9 @@
   kept until the user clears the cache; bdiver says when a newer release is
   available. `bdCacheInfo()` and the startup message describe the cache's
   location, size, release, creation and update dates, and how to clear it.
+* Settings: `bdSettings()` shows whether downloads are cached and whether
+  AI-predicted traits are included. `bdPredictionsEnable()` and
+  `bdPredictionsDisable()` save the predictions setting; the
+  `predictions` argument of `bdFetch()`, `bdExport()` and
+  `bdDefaultFields()` defaults to it. Predictions remain off unless turned
+  on.

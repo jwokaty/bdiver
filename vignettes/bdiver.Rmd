@@ -26,6 +26,7 @@ online <- tryCatch({
 ## changes the reader's own cache.
 options(
     bdiver.cache = FALSE,
+    bdiver.predictions = FALSE,
     bdiver.cache_dir = file.path(tempdir(), "bdiver-cache"),
     bdiver.config_dir = file.path(tempdir(), "bdiver-config")
 )
@@ -99,8 +100,10 @@ record$General$description
 
 ## AI-predicted traits
 
-BacDive offers genome-based predictions of some traits. They are excluded
-unless you opt in with `predictions = TRUE`:
+BacDive offers traits predicted from genome sequences by machine learning
+models, such as Gram stain, motility, or oxygen tolerance. bdiver never
+includes them unless you ask. For a single call, use
+`predictions = TRUE`:
 
 ```{r predictions, eval = online}
 predicted <- bdFetch(24493, predictions = TRUE)
@@ -109,12 +112,24 @@ names(predicted[["24493"]][["Genome-based predictions"]])
 
 Predicted values appear in a `"Genome-based predictions"` section and also
 next to observed values in other sections. They are recognizable by their
-`confidence` score, and bdiver ignores them unless asked to:
+`confidence` score, and bdiver keeps them out of columns of observed
+values unless asked to:
 
 ```{r predicted-values}
 path <- c("Morphology", "cell morphology", "gram stain")
 bdValues(record, path)
 bdValues(record, path, predicted = TRUE)
+```
+
+To include predictions in every call, turn them on in your settings with
+`bdPredictionsEnable()`; this is remembered in later sessions, and bdiver
+reminds you when it is loaded. `bdPredictionsDisable()` turns them off
+again, and `options(bdiver.predictions = TRUE)` turns them on for the
+current session only. An explicit `predictions = TRUE` or `FALSE` in a call
+always takes precedence. `bdSettings()` shows your settings:
+
+```{r settings}
+bdSettings()
 ```
 
 # Building tables

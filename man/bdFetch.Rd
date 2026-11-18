@@ -4,13 +4,14 @@
 \alias{bdFetch}
 \title{Retrieve BacDive strain records}
 \usage{
-bdFetch(ids, predictions = FALSE, cache = NULL)
+bdFetch(ids, predictions = NULL, cache = NULL)
 }
 \arguments{
 \item{ids}{\code{integer()} BacDive IDs, e.g. from \code{\link[=bdSearchTaxon]{bdSearchTaxon()}}.}
 
-\item{predictions}{\code{logical(1)} Include AI-predicted traits? Defaults to
-\code{FALSE}.}
+\item{predictions}{\code{logical(1)} or \code{NULL} Include AI-predicted traits?
+\code{NULL} (default) uses your setting, which is off unless you turned
+it on with \code{\link[=bdPredictionsEnable]{bdPredictionsEnable()}}; see \code{\link[=bdSettings]{bdSettings()}}.}
 
 \item{cache}{\code{logical(1)} or \code{NULL} Use the download cache? \code{NULL}
 (default) uses your saved choice; if you have not chosen yet, an
@@ -28,8 +29,9 @@ the API. When the cache is in use (see \link{bdCache}), records downloaded
 before are read from the cache and only the others are downloaded.
 }
 \details{
-AI-based trait predictions are excluded by default. When
-\code{predictions = TRUE}, BacDive adds a \code{"Genome-based predictions"} section
+AI-predicted traits are excluded unless you ask for them, with
+\code{predictions = TRUE} or with \code{\link[=bdPredictionsEnable]{bdPredictionsEnable()}}. With predictions,
+BacDive adds a \code{"Genome-based predictions"} section
 and also places predicted values next to observed ones in other sections
 (for example, a predicted Gram stain under \code{"Morphology"}). Predicted
 values carry a \code{"confidence"} element; \code{\link[=bdValues]{bdValues()}} and \code{\link[=bdField]{bdField()}} skip

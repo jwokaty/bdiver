@@ -11,6 +11,7 @@
 #' * Flatten: [bdValues()], [bdField()], [bdDefaultFields()],
 #'   [bdPredictionFields()], [bdExtract()]
 #' * Export: [bdExport()]
+#' * Settings and cache: [bdSettings()], [bdCache], [bdRelease()]
 #'
 #' @section Options:
 #' Set these with `options()`, for example `options(bdiver.rate = 0.5)`.
@@ -18,8 +19,10 @@
 #'   session, overriding your saved choice. See [bdCache].
 #' * `bdiver.cache_dir`: directory of the cache (default
 #'   `tools::R_user_dir("bdiver", "cache")`).
-#' * `bdiver.config_dir`: directory where your choice to cache is saved
+#' * `bdiver.config_dir`: directory where your settings are saved
 #'   (default `tools::R_user_dir("bdiver", "config")`).
+#' * `bdiver.predictions`: include AI-predicted traits (`TRUE`/`FALSE`) in
+#'   this session, overriding your saved setting. See [bdSettings()].
 #' * `bdiver.check_release`: check for newer BacDive releases (default
 #'   `TRUE`). See [bdRelease()].
 #' * `bdiver.rate`: maximum requests per second (default 1).

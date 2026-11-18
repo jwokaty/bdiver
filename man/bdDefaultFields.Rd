@@ -5,13 +5,14 @@
 \alias{bdPredictionFields}
 \title{Default BacDive field specification}
 \usage{
-bdDefaultFields(predictions = FALSE)
+bdDefaultFields(predictions = NULL)
 
 bdPredictionFields(traits = .bdPredictedTraits())
 }
 \arguments{
-\item{predictions}{\code{logical(1)} Append \code{\link[=bdPredictionFields]{bdPredictionFields()}}? Defaults
-to \code{FALSE}.}
+\item{predictions}{\code{logical(1)} or \code{NULL} Append \code{\link[=bdPredictionFields]{bdPredictionFields()}}?
+\code{NULL} (default) uses your setting, which is off unless you turned
+it on with \code{\link[=bdPredictionsEnable]{bdPredictionsEnable()}}; see \code{\link[=bdSettings]{bdSettings()}}.}
 
 \item{traits}{\code{character()} Predicted traits to include, as named in the
 \code{"trait"} element of BacDive predictions.}
@@ -33,7 +34,7 @@ utilization.
 \code{bdPredictionFields()} returns fields for AI-predicted traits. Each trait
 gives two columns, \verb{predicted_<trait>} and
 \verb{predicted_<trait>_confidence}. These columns are only filled for
-records fetched with \code{predictions = TRUE}.
+records fetched with AI-predicted traits (see \code{\link[=bdSettings]{bdSettings()}}).
 
 Modify the returned list to add, drop, rename, or reorder columns.
 }

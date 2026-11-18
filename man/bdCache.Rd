@@ -85,7 +85,7 @@ instead. To skip the check, set \code{options(bdiver.check_release = FALSE)}.
 
 The cache is in \code{tools::R_user_dir("bdiver", "cache")}; set
 \code{options(bdiver.cache_dir = )} to use another directory. Your choice to
-use the cache is saved in \code{tools::R_user_dir("bdiver", "config")}.
+use the cache is saved with your other settings; see \code{\link[=bdSettings]{bdSettings()}}.
 }
 
 \examples{
@@ -104,5 +104,5 @@ if (interactive()) {
 
 }
 \seealso{
-\code{\link[=bdFetch]{bdFetch()}}, \code{\link[=bdExport]{bdExport()}}, \code{\link[=bdRelease]{bdRelease()}}
+\code{\link[=bdSettings]{bdSettings()}}, \code{\link[=bdFetch]{bdFetch()}}, \code{\link[=bdExport]{bdExport()}}, \code{\link[=bdRelease]{bdRelease()}}
 }

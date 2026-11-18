@@ -51,16 +51,18 @@
 #' the API. When the cache is in use (see [bdCache]), records downloaded
 #' before are read from the cache and only the others are downloaded.
 #'
-#' AI-based trait predictions are excluded by default. When
-#' `predictions = TRUE`, BacDive adds a `"Genome-based predictions"` section
+#' AI-predicted traits are excluded unless you ask for them, with
+#' `predictions = TRUE` or with [bdPredictionsEnable()]. With predictions,
+#' BacDive adds a `"Genome-based predictions"` section
 #' and also places predicted values next to observed ones in other sections
 #' (for example, a predicted Gram stain under `"Morphology"`). Predicted
 #' values carry a `"confidence"` element; [bdValues()] and [bdField()] skip
 #' them unless asked not to.
 #'
 #' @param ids `integer()` BacDive IDs, e.g. from [bdSearchTaxon()].
-#' @param predictions `logical(1)` Include AI-predicted traits? Defaults to
-#'     `FALSE`.
+#' @param predictions `logical(1)` or `NULL` Include AI-predicted traits?
+#'     `NULL` (default) uses your setting, which is off unless you turned
+#'     it on with [bdPredictionsEnable()]; see [bdSettings()].
 #' @param cache `logical(1)` or `NULL` Use the download cache? `NULL`
 #'     (default) uses your saved choice; if you have not chosen yet, an
 #'     interactive session asks once. See [bdCache].
@@ -77,8 +79,9 @@
 #' names(records[["24493"]])
 #'
 #' @export
-bdFetch <- function(ids, predictions = FALSE, cache = NULL) {
+bdFetch <- function(ids, predictions = NULL, cache = NULL) {
     ids <- .bdCheckIds(ids)
+    predictions <- .bdUsePredictions(predictions)
     records <- .bdFetchRecords(ids, predictions, cache)
     missing <- setdiff(as.character(ids), names(records))
     if (length(missing))

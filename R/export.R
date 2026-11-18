@@ -134,10 +134,11 @@
 #'     columns only when `predictions = TRUE`.
 #' @param ids `integer()` or `NULL` BacDive IDs to export, e.g. from
 #'     [bdSearchTaxon()]. `NULL` (default) exports every strain.
-#' @param predictions `logical(1)` Request AI-predicted traits from BacDive?
-#'     Defaults to `FALSE`. Predicted values never appear in observed
-#'     columns built with [bdField()] unless that field sets
-#'     `predicted = TRUE`.
+#' @param predictions `logical(1)` or `NULL` Include AI-predicted traits?
+#'     `NULL` (default) uses your setting, which is off unless you turned
+#'     it on with [bdPredictionsEnable()]; see [bdSettings()].
+#'     Predicted values never appear in columns of observed values built
+#'     with [bdField()] unless that field sets `predicted = TRUE`.
 #' @param sep `character(1)` Field separator. Defaults to `","`; use
 #'     `"\t"` for a tab-separated file.
 #' @param resume `logical(1)` Continue an interrupted export of `file`?
@@ -175,10 +176,12 @@
 #'
 #' @export
 bdExport <- function(file, fields = bdDefaultFields(predictions),
-    ids = NULL, predictions = FALSE, sep = ",", resume = TRUE,
+    ids = NULL, predictions = NULL, sep = ",", resume = TRUE,
     overwrite = FALSE, maxEmptyBatches = 100L, cache = NULL,
     verbose = TRUE) {
     stopifnot(is.character(file), length(file) == 1L, !is.na(file))
+    ## Decide on predictions first: the default `fields` depends on it.
+    predictions <- .bdUsePredictions(predictions)
     fields <- .bdAsFields(fields)
     if (!is.null(ids))
         ids <- .bdCheckIds(ids)

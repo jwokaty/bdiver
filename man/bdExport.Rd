@@ -8,7 +8,7 @@ bdExport(
   file,
   fields = bdDefaultFields(predictions),
   ids = NULL,
-  predictions = FALSE,
+  predictions = NULL,
   sep = ",",
   resume = TRUE,
   overwrite = FALSE,
@@ -27,10 +27,11 @@ columns only when \code{predictions = TRUE}.}
 \item{ids}{\code{integer()} or \code{NULL} BacDive IDs to export, e.g. from
 \code{\link[=bdSearchTaxon]{bdSearchTaxon()}}. \code{NULL} (default) exports every strain.}
 
-\item{predictions}{\code{logical(1)} Request AI-predicted traits from BacDive?
-Defaults to \code{FALSE}. Predicted values never appear in observed
-columns built with \code{\link[=bdField]{bdField()}} unless that field sets
-\code{predicted = TRUE}.}
+\item{predictions}{\code{logical(1)} or \code{NULL} Include AI-predicted traits?
+\code{NULL} (default) uses your setting, which is off unless you turned
+it on with \code{\link[=bdPredictionsEnable]{bdPredictionsEnable()}}; see \code{\link[=bdSettings]{bdSettings()}}.
+Predicted values never appear in columns of observed values built
+with \code{\link[=bdField]{bdField()}} unless that field sets \code{predicted = TRUE}.}
 
 \item{sep}{\code{character(1)} Field separator. Defaults to \code{","}; use
 \code{"\\t"} for a tab-separated file.}

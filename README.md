@@ -49,6 +49,13 @@ bdExport("bacdive.csv")
 bdExport("bacdive_predictions.csv", predictions = TRUE)
 ```
 
+## AI-predicted traits
+
+BacDive's machine-learning predictions of traits are never included unless
+you ask: per call with `predictions = TRUE`, or for all calls with
+`bdPredictionsEnable()` (undo with `bdPredictionsDisable()`). See your
+settings with `bdSettings()`.
+
 ## Caching
 
 Downloads can be cached with BiocFileCache, so that they are reused across

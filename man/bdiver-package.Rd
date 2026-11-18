@@ -19,6 +19,7 @@ delimited file.
 \item Flatten: \code{\link[=bdValues]{bdValues()}}, \code{\link[=bdField]{bdField()}}, \code{\link[=bdDefaultFields]{bdDefaultFields()}},
 \code{\link[=bdPredictionFields]{bdPredictionFields()}}, \code{\link[=bdExtract]{bdExtract()}}
 \item Export: \code{\link[=bdExport]{bdExport()}}
+\item Settings and cache: \code{\link[=bdSettings]{bdSettings()}}, \link{bdCache}, \code{\link[=bdRelease]{bdRelease()}}
 }
 }
 \section{Options}{
@@ -29,8 +30,10 @@ Set these with \code{options()}, for example \code{options(bdiver.rate = 0.5)}.
 session, overriding your saved choice. See \link{bdCache}.
 \item \code{bdiver.cache_dir}: directory of the cache (default
 \code{tools::R_user_dir("bdiver", "cache")}).
-\item \code{bdiver.config_dir}: directory where your choice to cache is saved
+\item \code{bdiver.config_dir}: directory where your settings are saved
 (default \code{tools::R_user_dir("bdiver", "config")}).
+\item \code{bdiver.predictions}: include AI-predicted traits (\code{TRUE}/\code{FALSE}) in
+this session, overriding your saved setting. See \code{\link[=bdSettings]{bdSettings()}}.
 \item \code{bdiver.check_release}: check for newer BacDive releases (default
 \code{TRUE}). See \code{\link[=bdRelease]{bdRelease()}}.
 \item \code{bdiver.rate}: maximum requests per second (default 1).
