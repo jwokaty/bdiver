@@ -57,10 +57,15 @@ your choice with `bdCacheEnable()` or `bdCacheDisable()`. When loaded,
 bdiver reports the size of the cache.
 
 ```r
-bdCacheInfo()     # location, number of strains, size
+bdCacheInfo()     # location, number of strains, releases, size
 bdCachedIds()     # IDs available offline
 bdCacheClear()    # delete the cache
 ```
+
+BacDive is updated in releases (`bdRelease()` shows the current one). When
+bdiver finds that cached records come from an older release, it says so and
+downloads them again as they are used. Set
+`options(bdiver.check_release = FALSE)` to keep using an older release.
 
 ## Interrupted exports and Windows
 

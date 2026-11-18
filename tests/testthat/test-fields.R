@@ -68,6 +68,6 @@ test_that("bdExtract returns an annotated DataFrame", {
     expect_identical(info$path[1:2], c("General > BacDive-ID", NA))
     expect_identical(info$predicted, c(FALSE, NA, TRUE, TRUE, NA))
     expect_match(info$path[3], "Genome-based predictions")
-    expect_named(S4Vectors::metadata(tbl), c("source", "extracted"))
+    expect_named(S4Vectors::metadata(tbl), c("source", "release", "extracted"))
     expect_s3_class(as.data.frame(tbl), "data.frame")
 })

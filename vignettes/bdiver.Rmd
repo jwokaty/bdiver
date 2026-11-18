@@ -268,9 +268,32 @@ tbl <- bdExtract(bdFetch(ids))
 tbl <- bdExtract(bdFetch(bdCachedIds()))
 ```
 
-The cache does not expire. BacDive is updated regularly, so clear the cache
-with `bdCacheClear()` to get current data. A cache of all of BacDive takes
-about 1 GB. Records fetched with `predictions = TRUE` are cached separately.
+A cache of all of BacDive takes about 1 GB. Records fetched with
+`predictions = TRUE` are cached separately.
+
+## New BacDive releases
+
+BacDive is updated in releases, and every record states the release it
+comes from. `bdRelease()` returns the current one:
+
+```{r release, eval = online}
+bdRelease()
+```
+
+The first time a session uses the cache, bdiver looks up the current
+release. If the cache holds records from an older release, bdiver says so
+once and downloads those records again as you use them, so a table or
+export never mixes old and new data. `bdCacheClear()` removes all old
+records at once. The release is also shown when bdiver is loaded, by
+`bdCacheInfo()`, in the `metadata()` of tables from `bdExtract()`, and at
+the end of each `bdExport()`.
+
+To keep using records from an older release, for example to reproduce an
+earlier analysis, turn the check off:
+
+```{r keep-release, eval = FALSE}
+options(bdiver.check_release = FALSE)
+```
 
 # Session information
 

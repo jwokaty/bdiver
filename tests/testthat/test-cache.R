@@ -74,6 +74,6 @@ test_that("the startup message reports the cache size", {
     local_mocked_bindings(.bdFetchBatch = fakeBacDive(1)$fetch)
     expect_null(.bdStartupMessage())
     bdFetch(1)
-    expect_match(.bdStartupMessage(), "bdiver cache: .*B in ")
+    expect_match(.bdStartupMessage(), "bdiver cache: [0-9.]+ [kMG]?B")
     expect_match(.bdStartupMessage(), "bdCacheClear()", fixed = TRUE)
 })

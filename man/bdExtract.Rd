@@ -18,7 +18,8 @@ record, with missing values as \code{NA}. Column annotations are available
 with \code{\link[S4Vectors:mcols]{S4Vectors::mcols()}}: \code{path}, the BacDive element each column
 comes from (\code{NA} for custom functions), and \code{predicted}, whether it
 holds AI-predicted values. \code{\link[S4Vectors:metadata]{S4Vectors::metadata()}} records the data
-source and the time of extraction. Use \code{as.data.frame()} for a base
+source, the BacDive release(s) of the records (see \code{\link[=bdRelease]{bdRelease()}}),
+and the time of extraction. Use \code{as.data.frame()} for a base
 \code{data.frame}.
 }
 \description{

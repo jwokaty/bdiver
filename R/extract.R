@@ -52,7 +52,8 @@
 #'     with [S4Vectors::mcols()]: `path`, the BacDive element each column
 #'     comes from (`NA` for custom functions), and `predicted`, whether it
 #'     holds AI-predicted values. [S4Vectors::metadata()] records the data
-#'     source and the time of extraction. Use `as.data.frame()` for a base
+#'     source, the BacDive release(s) of the records (see [bdRelease()]),
+#'     and the time of extraction. Use `as.data.frame()` for a base
 #'     `data.frame`.
 #'
 #' @examples
@@ -79,6 +80,6 @@ bdExtract <- function(records, fields = bdDefaultFields()) {
     tbl <- S4Vectors::DataFrame(values, check.names = FALSE)
     S4Vectors::mcols(tbl) <- .bdColumnInfo(fields)
     S4Vectors::metadata(tbl) <- list(source = .bdBaseUrl(),
-        extracted = Sys.time())
+        release = .bdReleases(records), extracted = Sys.time())
     tbl
 }

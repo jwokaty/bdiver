@@ -30,7 +30,8 @@ instead of those without? Defaults to \code{FALSE}.}
 \itemize{
 \item \code{bdCacheInfo()}: a \code{list} with the cache \code{path}, whether it is
 \code{enabled}, the number of cached \code{strains} and \code{strainsWithPredictions},
-its \code{size} in bytes, and when it was last \code{updated}.
+\code{releases} (the number of cached strains per BacDive release), its
+\code{size} in bytes, and when it was last \code{updated}.
 \item \code{bdCachedIds()}: an \code{integer} vector of cached BacDive IDs.
 \item \code{bdCacheEnable()}, \code{bdCacheDisable()}, \code{bdCacheClear()}: \code{NULL},
 invisibly.
@@ -51,14 +52,28 @@ with \code{bdCacheEnable()} and \code{bdCacheDisable()}, or for the current sess
 only with \code{options(bdiver.cache = TRUE)} or \code{FALSE}. Non-interactive
 sessions do not cache unless enabled.
 
-The cache does not expire. BacDive is updated regularly; clear the cache
-with \code{bdCacheClear()} to download current data. A complete cache of
-BacDive takes about 1 GB.
-
 The cache is stored in \code{tools::R_user_dir("bdiver", "cache")};
 set \code{options(bdiver.cache_dir = )} to use another directory. Your choice
 to use the cache is stored in \code{tools::R_user_dir("bdiver", "config")}.
 }
+\section{New BacDive releases}{
+
+BacDive is updated in releases (see \code{\link[=bdRelease]{bdRelease()}}), and bdiver records
+the release of every cached record. The first time a session uses the
+cache, bdiver looks up the current release (one small request). Records
+cached from an older release are then not used: they are downloaded
+again when needed, and bdiver says so once per session. Run
+\code{bdCacheClear()} to remove all old records at once. \code{bdCacheInfo()} shows
+which releases the cache holds, and the message shown when bdiver is
+loaded names them too.
+
+To keep working with cached records from an older release, for example to
+reproduce an analysis, set \code{options(bdiver.check_release = FALSE)}. When
+BacDive cannot be reached, cached records are used as they are.
+
+A complete cache of BacDive takes about 1 GB.
+}
+
 \examples{
 bdCacheInfo()
 

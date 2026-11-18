@@ -6,9 +6,13 @@
             "with bdCacheEnable() or bdCacheDisable()."))
     if (!.bdCacheExists())
         return(NULL)
-    paste0("bdiver cache: ", .bdFormatSize(.bdCacheSize()), " in ",
-        .bdCacheDir(), "\nSee bdCacheInfo() for details; delete it with ",
-        "bdCacheClear().", if (!choice) " (Caching is turned off.)")
+    releases <- names(.bdCachedReleases(.bdCacheIndex()))
+    paste0("bdiver cache: ", .bdFormatSize(.bdCacheSize()),
+        if (length(releases)) paste0(" of BacDive release ",
+            paste(releases, collapse = ", ")),
+        " in ", .bdCacheDir(), "\nOlder releases are replaced as data ",
+        "are used. See bdCacheInfo(); delete with bdCacheClear().",
+        if (!choice) " (Caching is turned off.)")
 }
 
 .onAttach <- function(libname, pkgname) {

@@ -80,6 +80,9 @@ make sure no export is running, delete it with
 \code{unlink(paste0(file, ".lock"), recursive = TRUE)}, and run \code{bdExport()}
 again.
 
+The BacDive release of the exported records is reported when the export
+finishes (see \code{\link[=bdRelease]{bdRelease()}}).
+
 A full export makes roughly 2,000 requests and takes about an hour.
 }
 \examples{

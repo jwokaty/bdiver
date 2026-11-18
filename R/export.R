@@ -17,8 +17,8 @@
 
 .bdWriteRows <- function(tbl, file, sep, header = FALSE) {
     utils::write.table(as.data.frame(tbl, optional = TRUE), file, sep = sep,
-        quote = TRUE, qmethod = "double", row.names = FALSE, col.names = header, append = !header, na = "",
-        fileEncoding = "UTF-8")
+        quote = TRUE, qmethod = "double", row.names = FALSE,
+        col.names = header, append = !header, na = "", fileEncoding = "UTF-8")
 }
 
 ## Drop rows written after the last recorded checkpoint (e.g. when an
@@ -48,6 +48,7 @@
         dimnames = list(NULL, columns)))
     .bdWriteRows(empty, file, sep, header = TRUE)
     state <- list(mode = mode, position = 0L, empty = 0L, rows = 0L,
+        releases = character(),
         columns = columns)
     .bdWriteProgress(file, state)
     state
@@ -91,6 +92,9 @@
 #' make sure no export is running, delete it with
 #' `unlink(paste0(file, ".lock"), recursive = TRUE)`, and run `bdExport()`
 #' again.
+#'
+#' The BacDive release of the exported records is reported when the export
+#' finishes (see [bdRelease()]).
 #'
 #' A full export makes roughly 2,000 requests and takes about an hour.
 #'
@@ -160,6 +164,8 @@ bdExport <- function(file, fields = bdDefaultFields(predictions),
             .bdWriteRows(bdExtract(records, fields), file, sep)
         state[["position"]] <- state[["position"]] + length(batch)
         state[["rows"]] <- state[["rows"]] + length(records)
+        state[["releases"]] <- union(state[["releases"]],
+            .bdReleases(records))
         state[["empty"]] <- if (length(records)) 0L else state[["empty"]] + 1L
         .bdWriteProgress(file, state)
         if (verbose && state[["position"]] %% 5000L < .bdMaxIds())
@@ -168,6 +174,16 @@ bdExport <- function(file, fields = bdDefaultFields(predictions),
     }
     unlink(.bdProgressFile(file))
     if (verbose)
-        message("Exported ", state[["rows"]], " strains to ", file)
+        message("Exported ", state[["rows"]], " strains to ", file,
+            .bdReleaseNote(state[["releases"]]))
     invisible(file)
+}
+
+.bdReleaseNote <- function(releases) {
+    if (!length(releases))
+        return("")
+    if (length(releases) == 1L)
+        return(paste0(" (BacDive release ", releases, ")"))
+    paste0(" (records from several BacDive releases: ",
+        paste(releases, collapse = ", "), ")")
 }

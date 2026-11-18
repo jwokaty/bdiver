@@ -78,7 +78,8 @@
 }
 
 .bdEmptyBlock <- function() {
-    list(records = list(), checked = integer(), updated = Sys.time())
+    list(records = list(), checked = integer(), release = NA_character_,
+        updated = Sys.time())
 }
 
 .bdReadBlock <- function(path) {
@@ -87,12 +88,35 @@
     tryCatch(readRDS(path), error = function(e) .bdEmptyBlock())
 }
 
-## Atomically replace a block file.
-.bdWriteBlock <- function(block, path) {
+## Atomically replace a file with an R object.
+.bdSaveAtomic <- function(object, path) {
     tmp <- paste0(path, ".tmp")
-    saveRDS(block, tmp)
+    saveRDS(object, tmp)
     if (!file.rename(tmp, path))
         stop("could not write to the bdiver cache", call. = FALSE)
+}
+
+## The index summarizes every block (release, IDs found, last update), so
+## the cache can be described without reading the blocks themselves.
+.bdIndexFile <- function() {
+    file.path(.bdCacheDir(), "bdiver-index.rds")
+}
+
+.bdReadIndex <- function() {
+    path <- .bdIndexFile()
+    if (!file.exists(path))
+        return(list())
+    tryCatch(readRDS(path), error = function(e) list())
+}
+
+.bdUpdateIndex <- function(blocks) {
+    index <- .bdReadIndex()
+    for (name in names(blocks)) {
+        b <- blocks[[name]]
+        index[[name]] <- list(release = b[["release"]],
+            ids = as.integer(names(b[["records"]])), updated = b[["updated"]])
+    }
+    .bdSaveAtomic(index, .bdIndexFile())
 }
 
 ## Paths of cached blocks, named by resource name.
@@ -102,34 +126,61 @@
     stats::setNames(info[["rpath"]][keep], info[["rname"]][keep])
 }
 
-.bdUpdateBlock <- function(bfc, paths, name, block, records, checked) {
+.bdUpdateBlock <- function(bfc, paths, name, block, records, checked,
+    release) {
     block[["records"]][names(records)] <- records
     block[["checked"]] <- union(block[["checked"]], checked)
+    block[["release"]] <- release
     block[["updated"]] <- Sys.time()
     path <- paths[name]
     if (is.na(path))
         path <- BiocFileCache::bfcnew(bfc, name, ext = ".rds")
-    .bdWriteBlock(block, unname(path))
+    .bdSaveAtomic(block, unname(path))
+    block
 }
 
-## Fetch records using the cache, downloading only IDs not checked before.
+## Load cached blocks, emptying those from an older BacDive release.
+.bdLoadBlocks <- function(paths, names, current) {
+    blocks <- lapply(paths[names], .bdReadBlock)
+    names(blocks) <- names
+    if (is.na(current))
+        return(blocks)
+    stale <- vapply(blocks, function(b) {
+        length(b[["checked"]]) > 0L && !identical(b[["release"]], current)
+    }, logical(1))
+    if (any(stale)) {
+        old <- unique(vapply(blocks[stale], function(b) {
+            b[["release"]] %||% NA_character_
+        }, character(1)))
+        .bdNotifyStale(old[!is.na(old)], current)
+        blocks[stale] <- list(.bdEmptyBlock())
+    }
+    blocks
+}
+
+## Fetch records using the cache, downloading only IDs not checked before
+## in the current BacDive release.
 .bdFetchCached <- function(ids, predictions) {
+    current <- .bdCheckRelease()
     bfc <- .bdBfc()
     paths <- .bdBlockPaths(bfc)
     groups <- split(ids, .bdBlockOf(ids))
     names <- .bdBlockName(as.integer(names(groups)), predictions)
-    blocks <- lapply(paths[names], .bdReadBlock)
-    names(blocks) <- names
+    blocks <- .bdLoadBlocks(paths, names, current)
     need <- unlist(Map(function(g, b) g[!g %in% b[["checked"]]], groups,
         blocks), use.names = FALSE)
     new <- .bdFetchNetwork(need, predictions)
-    for (i in which(vapply(groups, function(g) any(g %in% need),
-        logical(1)))) {
+    release <- if (is.na(current)) c(.bdReleases(new), NA)[1L] else current
+    touched <- which(vapply(groups, function(g) any(g %in% need),
+        logical(1)))
+    for (i in touched) {
         checked <- groups[[i]][groups[[i]] %in% need]
         recs <- new[intersect(as.character(checked), names(new))]
-        .bdUpdateBlock(bfc, paths, names[[i]], blocks[[i]], recs, checked)
-        blocks[[i]][["records"]][names(recs)] <- recs
+        blocks[[i]] <- .bdUpdateBlock(bfc, paths, names[[i]], blocks[[i]],
+            recs, checked, release)
     }
+    if (length(touched))
+        .bdUpdateIndex(blocks[touched])
     cached <- unlist(lapply(unname(blocks), `[[`, "records"),
         recursive = FALSE)
     cached[intersect(as.character(ids), names(cached))]
@@ -150,9 +201,21 @@
 #' only with `options(bdiver.cache = TRUE)` or `FALSE`. Non-interactive
 #' sessions do not cache unless enabled.
 #'
-#' The cache does not expire. BacDive is updated regularly; clear the cache
-#' with `bdCacheClear()` to download current data. A complete cache of
-#' BacDive takes about 1 GB.
+#' @section New BacDive releases:
+#' BacDive is updated in releases (see [bdRelease()]), and bdiver records
+#' the release of every cached record. The first time a session uses the
+#' cache, bdiver looks up the current release (one small request). Records
+#' cached from an older release are then not used: they are downloaded
+#' again when needed, and bdiver says so once per session. Run
+#' `bdCacheClear()` to remove all old records at once. `bdCacheInfo()` shows
+#' which releases the cache holds, and the message shown when bdiver is
+#' loaded names them too.
+#'
+#' To keep working with cached records from an older release, for example to
+#' reproduce an analysis, set `options(bdiver.check_release = FALSE)`. When
+#' BacDive cannot be reached, cached records are used as they are.
+#'
+#' A complete cache of BacDive takes about 1 GB.
 #'
 #' @details The cache is stored in `tools::R_user_dir("bdiver", "cache")`;
 #' set `options(bdiver.cache_dir = )` to use another directory. Your choice
@@ -166,7 +229,8 @@
 #' @return
 #' * `bdCacheInfo()`: a `list` with the cache `path`, whether it is
 #'   `enabled`, the number of cached `strains` and `strainsWithPredictions`,
-#'   its `size` in bytes, and when it was last `updated`.
+#'   `releases` (the number of cached strains per BacDive release), its
+#'   `size` in bytes, and when it was last `updated`.
 #' * `bdCachedIds()`: an `integer` vector of cached BacDive IDs.
 #' * `bdCacheEnable()`, `bdCacheDisable()`, `bdCacheClear()`: `NULL`,
 #'   invisibly.
@@ -212,11 +276,23 @@ bdCacheDisable <- function() {
     file.exists(file.path(.bdCacheDir(), "BiocFileCache.sqlite"))
 }
 
-.bdCacheBlocks <- function() {
+.bdCacheIndex <- function() {
     if (!.bdCacheExists())
         return(list())
-    paths <- .bdBlockPaths(.bdBfc())
-    lapply(paths, .bdReadBlock)
+    .bdReadIndex()
+}
+
+## Number of cached strains per release.
+.bdCachedReleases <- function(index) {
+    n <- vapply(index, function(x) length(x[["ids"]]), integer(1))
+    rel <- vapply(index, function(x) x[["release"]] %||% NA_character_,
+        character(1))
+    keep <- n > 0L
+    if (!any(keep))
+        return(integer())
+    counts <- tapply(n[keep], ifelse(is.na(rel[keep]), "unknown",
+        rel[keep]), sum)
+    stats::setNames(as.integer(counts), names(counts))
 }
 
 .bdCacheSize <- function() {
@@ -235,17 +311,18 @@ bdCacheDisable <- function() {
 #' @rdname bdCache
 #' @export
 bdCacheInfo <- function() {
-    blocks <- .bdCacheBlocks()
-    pred <- grepl("-predictions$", names(blocks))
-    count <- function(b) {
-        sum(vapply(b, function(x) length(x[["records"]]), integer(1)))
+    index <- .bdCacheIndex()
+    pred <- grepl("-predictions$", names(index))
+    count <- function(x) {
+        sum(vapply(x, function(b) length(b[["ids"]]), integer(1)))
     }
-    updated <- lapply(blocks, `[[`, "updated")
+    updated <- lapply(index, `[[`, "updated")
     list(
         path = .bdCacheDir(),
         enabled = isTRUE(.bdCacheChoice()),
-        strains = count(blocks[!pred]),
-        strainsWithPredictions = count(blocks[pred]),
+        strains = count(index[!pred]),
+        strainsWithPredictions = count(index[pred]),
+        releases = .bdCachedReleases(index),
         size = .bdCacheSize(),
         updated = if (length(updated)) max(do.call(c, updated)) else NULL
     )
@@ -254,12 +331,11 @@ bdCacheInfo <- function() {
 #' @rdname bdCache
 #' @export
 bdCachedIds <- function(predictions = FALSE) {
-    blocks <- .bdCacheBlocks()
-    pred <- grepl("-predictions$", names(blocks))
-    blocks <- blocks[pred == isTRUE(predictions)]
-    ids <- unlist(lapply(blocks, function(b) names(b[["records"]])),
-        use.names = FALSE)
-    sort(as.integer(ids))
+    index <- .bdCacheIndex()
+    pred <- grepl("-predictions$", names(index))
+    index <- index[pred == isTRUE(predictions)]
+    sort(unlist(lapply(index, `[[`, "ids"), use.names = FALSE)) %||%
+        integer()
 }
 
 #' @rdname bdCache
