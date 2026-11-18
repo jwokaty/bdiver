@@ -32,10 +32,8 @@
     c(body[["message"]], msgs[nzchar(msgs)])
 }
 
-## Build a request. `url` may be a path relative to the base URL or a full
-## URL (as returned in the `next` field of paginated responses). Requests
-## are retried after server or network errors and limited to
-## getOption("bdiver.rate") per second.
+## Build a request for a path (e.g. "fetch/1") or a full URL. Requests are
+## rate limited and retried after server or network errors.
 .bdRequest <- function(url, query = list(),
     timeout = getOption("bdiver.timeout", 300),
     maxTries = getOption("bdiver.max_tries", 5L)) {

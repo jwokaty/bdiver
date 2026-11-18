@@ -20,27 +20,15 @@ kept. Defaults to \code{";"}.}
 \code{FALSE}.}
 }
 \value{
-A \verb{function(record)} returning \code{character(1)}, \code{NA} when the
-record has no value. The function stops with an error when \code{path}
-leads to groups of values rather than to single values; extend the
-path to the element you need, e.g. \code{c("General", "NCBI tax id", "NCBI tax id")} instead of \code{c("General", "NCBI tax id")}.
+A function that returns a record's value for this column.
 }
 \description{
-\code{bdField()} creates a field: a function that takes one BacDive record
-and returns the value of one column. Fields are combined into a named
-list (a field specification) that controls the columns of \code{\link[=bdExtract]{bdExtract()}}
-and \code{\link[=bdExport]{bdExport()}}.
-}
-\details{
-A field specification is a named \code{list}. Its names are the
-column names and each element is one of:
-\itemize{
-\item a \code{character} vector, a path into the record that is passed to
-\code{bdField()} with the default arguments;
-\item a field made with \code{bdField()};
-\item any \verb{function(record)} that returns a \code{character(1)} (or something
-that can be collapsed into one, such as a vector of values).
-}
+The columns of \code{\link[=bdExtract]{bdExtract()}} and \code{\link[=bdExport]{bdExport()}} are given as a named list.
+Each name is a column name, and each element says where its values come
+from: a path of element names in the record (e.g.
+\code{c("Morphology", "cell morphology", "gram stain")}), a column made with
+\code{bdField()} for more control, or a function that takes a record and
+returns a string.
 }
 \examples{
 gram <- bdField(c("Morphology", "cell morphology", "gram stain"))

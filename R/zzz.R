@@ -1,13 +1,6 @@
-## The message shown when bdiver is attached. It describes the cache, as
-## bdCacheInfo() does: where it is, its size and release, when it was
-## created and last updated, whether a newer BacDive release is available,
-## and how to clear it. It also says when AI-predicted traits are turned
-## on, so that they are never used without the user knowing.
-
-## Text of the startup message, or NULL when there is nothing to say.
-## `newRelease` is a newer BacDive release, or NULL. The note about choosing
-## whether to cache is only shown in interactive sessions, where the
-## question will be asked.
+## The message shown when bdiver is attached: a description of the cache
+## (as printed by bdCacheInfo()), and a reminder when AI-predicted traits
+## are turned on. Returns NULL when there is nothing to say.
 .bdStartupMessage <- function(newRelease = NULL, interactive = interactive()) {
     lines <- character()
     if (is.null(.bdCacheChoice())) {
@@ -27,8 +20,7 @@
     paste(lines, collapse = "\n")
 }
 
-## A newer release available, or NULL. Only checked in interactive
-## sessions, with a single request that gives up after five seconds.
+## A newer BacDive release, or NULL. Checked in interactive sessions only.
 .bdStartupNewRelease <- function() {
     if (!interactive())
         return(NULL)

@@ -15,17 +15,15 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
-## Network chunks run only when BacDive is reachable, so the vignette
-## builds offline.
+## Chunks that use the network run only when BacDive is reachable.
 online <- tryCatch({
     httr2::req_perform(httr2::req_timeout(
         httr2::request("https://api.bacdive.dsmz.de/v2/fetch/24493"), 20))
     TRUE
 }, error = function(e) FALSE)
-## Use a temporary cache and settings, so building the vignette never
-## changes the reader's own cache.
+## Use temporary settings, so building the vignette never changes the
+## reader's own cache or settings.
 options(
-    bdiver.cache = FALSE,
     bdiver.predictions = FALSE,
     bdiver.cache_dir = file.path(tempdir(), "bdiver-cache"),
     bdiver.config_dir = file.path(tempdir(), "bdiver-config")
@@ -35,18 +33,12 @@ options(
 # Introduction
 
 [BacDive](https://bacdive.dsmz.de/), the Bacterial Diversity Metadatabase,
-holds standardized phenotypic, physiological, and molecular data for more than
-100,000 bacterial and archaeal strains. **bdiver** is a client for version 2
-of the BacDive web service. It can
+describes more than 100,000 bacterial and archaeal strains: their
+taxonomy, morphology, physiology, growth conditions, and more. bdiver lets
+you find strains, download their records, and turn them into tables, for
+example for [bugphyzz](https://bioconductor.org/packages/bugphyzz).
 
-* search strains by taxon, culture collection number, or sequence accession;
-* retrieve complete strain records;
-* flatten records into tables with columns you choose; and
-* export the whole database to a delimited file, for example to be used
-    by [bugphyzz](https://bioconductor.org/packages/bugphyzz).
-
-The BacDive API no longer requires registration. BacDive data may only be
-used in compliance with the
+BacDive data may only be used in compliance with the
 [BacDive terms of use](https://bacdive.dsmz.de/about).
 
 # Installation
@@ -61,9 +53,9 @@ BiocManager::install("bdiver")
 library(bdiver)
 ```
 
-# Searching
+# Find strains
 
-Each search function returns the BacDive IDs of the matching strains.
+Each search returns the BacDive IDs of the matching strains.
 
 ```{r search, eval = online}
 ids <- bdSearchTaxon("Phaeobacter", "gallaeciensis")
@@ -73,276 +65,120 @@ bdSearch16S("KC176239")
 bdSearchGenome("GCA_000511385")
 ```
 
-Culture collection and accession searches accept several values, and can
-match partially with `searchType`:
+# Get records
 
-```{r search-type, eval = online}
-length(bdSearchCultureCollection("DSM 2664", searchType = "startswith"))
-```
-
-# Retrieving records
-
-`bdFetch()` downloads full records, 100 per request. Each record is a nested
-list with one element per BacDive section.
+`bdFetch()` downloads the records of the strains.
 
 ```{r fetch, eval = online}
 records <- bdFetch(ids)
 names(records[[1]])
 ```
 
-The rest of this vignette uses a record shipped with the package, so it can
-also be followed offline.
+The rest of this vignette uses a record that comes with the package.
 
 ```{r example}
 record <- bdExampleRecord()
 record$General$description
 ```
 
-## AI-predicted traits
+# Make a table
 
-BacDive offers traits predicted from genome sequences by machine learning
-models, such as Gram stain, motility, or oxygen tolerance. bdiver never
-includes them unless you ask. For a single call, use
-`predictions = TRUE`:
+`bdExtract()` turns records into a table with one row per strain. By
+default it has the columns used by bugphyzz:
 
-```{r predictions, eval = online}
-predicted <- bdFetch(24493, predictions = TRUE)
-names(predicted[["24493"]][["Genome-based predictions"]])
+```{r default-table}
+tbl <- bdExtract(list(record))
+t(as.data.frame(tbl[, 1:12]))
 ```
 
-Predicted values appear in a `"Genome-based predictions"` section and also
-next to observed values in other sections. They are recognizable by their
-`confidence` score, and bdiver keeps them out of columns of observed
-values unless asked to:
+To choose your own columns, give a named list. Each element is the path to
+a value in the record:
 
-```{r predicted-values}
-path <- c("Morphology", "cell morphology", "gram stain")
-bdValues(record, path)
-bdValues(record, path, predicted = TRUE)
-```
-
-To include predictions in every call, turn them on in your settings with
-`bdPredictionsEnable()`; this is remembered in later sessions, and bdiver
-reminds you when it is loaded. `bdPredictionsDisable()` turns them off
-again, and `options(bdiver.predictions = TRUE)` turns them on for the
-current session only. An explicit `predictions = TRUE` or `FALSE` in a call
-always takes precedence. `bdSettings()` shows your settings:
-
-```{r settings}
-bdSettings()
-```
-
-# Building tables
-
-## Fields
-
-Any element of a record can be reached with a path of element names.
-Because an element can hold one observation or many, `bdValues()` returns all
-values found:
-
-```{r values}
-bdValues(record, c("Culture and growth conditions", "culture temp",
-    "temperature"))
-```
-
-A *field specification* is a named list describing the columns of a table.
-Each element is either a path, a field made by `bdField()`, or any function
-that takes a record and returns a string.
-
-```{r fields}
-fields <- list(
-    bacdive_id = c("General", "BacDive-ID"),
+```{r own-columns}
+bdExtract(list(record), list(
     species = c("Name and taxonomic classification", "species"),
-    temperature = bdField(c("Culture and growth conditions",
-        "culture temp", "temperature"), select = "first"),
-    media = bdField(c("Culture and growth conditions", "culture medium",
-        "name"), collapse = " | "),
-    n_references = function(record) length(record$Reference)
-)
-bdExtract(list(record), fields)
+    gram_stain = c("Morphology", "cell morphology", "gram stain"),
+    medium = c("Culture and growth conditions", "culture medium", "name")
+))
 ```
 
-## The result: a DataFrame
+You can also start from the default columns and change them:
 
-`bdExtract()` returns a `DataFrame` from
-`r BiocStyle::Biocpkg("S4Vectors")`, Bioconductor's version of a
-`data.frame`. It works like a `data.frame` (`$`, `[`, `nrow()`) and also
-records where each column came from:
+```{r change-defaults}
+columns <- bdDefaultFields()
+columns$colony_color <- NULL
+columns$keywords <- c("General", "keywords")
+```
+
+The table is a `DataFrame` from `r BiocStyle::Biocpkg("S4Vectors")`. It
+works like a `data.frame`, and also records where each column comes from
+and which BacDive release the data are from:
 
 ```{r dataframe}
-tbl <- bdExtract(list(record), fields)
-S4Vectors::mcols(tbl)
-S4Vectors::metadata(tbl)
-as.data.frame(tbl)
+S4Vectors::mcols(tbl)[1:4, ]
+S4Vectors::metadata(tbl)$release
 ```
 
-## Default fields
+# Export to a file
 
-`bdDefaultFields()` gives the columns of the BacDive table used by bugphyzz.
-Start from it and add or remove columns as needed:
-
-```{r default-fields}
-fields <- bdDefaultFields()
-names(fields)
-tbl <- bdExtract(list(record), fields)
-t(as.data.frame(tbl))
-```
-
-`bdPredictionFields()` adds a prediction and a confidence column for each
-predicted trait:
-
-```{r prediction-fields}
-preds <- bdExtract(list(record),
-    bdPredictionFields(c("gram-positive", "motility")))
-t(as.data.frame(preds))
-```
-
-# Exporting BacDive
-
-`bdExport()` fetches records in batches, flattens them with a field
-specification, and appends them to a file. Here, only a few strains are
-exported:
+`bdExport()` writes records to a file, one row per strain:
 
 ```{r export, eval = online}
 out <- tempfile(fileext = ".csv")
 bdExport(out, ids = ids)
-head(read.csv(out)[, 1:6])
+read.csv(out)[, 1:4]
 ```
 
-Leave `ids` as `NULL` to export every strain in BacDive. IDs are then
-scanned upwards from 1 until no more strains are found. A full export takes
-about an hour.
-
-## Interrupted downloads
-
-Short network interruptions are retried automatically: each request is
-tried up to five times, waiting longer each time, and BacDive's requests to
-slow down are respected. If a download stops anyway:
-
-* `bdExport()` saves its progress after every batch of 100 IDs. Run the
-  same call again and it continues where it stopped, so at most one batch
-  is downloaded again.
-* `bdFetch()` with the cache (see below) saves every batch to the cache as
-  soon as it arrives. Running the same call again downloads only what is
-  missing.
-* `bdFetch()` without the cache keeps records in memory only, so an
-  interrupted call has to start again. Use the cache or `bdExport()` for
-  large downloads.
-
-## Locks
-
-While an export runs, a lock (`<file>.lock`) keeps other R sessions from
-writing to the same file. It is removed when the export ends, even after an
-error. If R crashes, the lock stays behind; the next `bdExport()` notices
-that the process that made it has ended and replaces it.
-
-On Windows, bdiver checks for that process with the `tasklist` command. If
-it cannot check (for example when `tasklist` is not available, or the lock
-was made on another computer sharing the same drive), `bdExport()` stops
-and shows the lock's path. Make sure no export of that file is running, then
-delete the lock and run `bdExport()` again:
-
-```{r unlock, eval = FALSE}
-unlink("bacdive.csv.lock", recursive = TRUE)
-```
+Without `ids`, it exports all of BacDive. This takes about an hour; if it
+is interrupted, run the same call again and it continues where it stopped.
 
 ```{r export-all, eval = FALSE}
-## Everything, in the bugphyzz format
 bdExport("bacdive.csv")
-
-## Everything, including AI-predicted traits
-bdExport("bacdive_predictions.csv", predictions = TRUE)
-
-## Selected columns as a tab-separated file
-fields <- c(bdDefaultFields()[c("bacdive_id", "taxon_name", "ncbi_id")],
-    list(keywords = c("General", "keywords")))
-bdExport("bacdive_keywords.tsv", fields, sep = "\t")
 ```
 
-# Caching downloads
+# Cache
 
-bdiver can keep the records it downloads in a cache managed by
-`r BiocStyle::Biocpkg("BiocFileCache")`. With the cache, records are
-downloaded once and reused by later calls to `bdFetch()` and `bdExport()`,
-whatever search they come from. This is useful when you
-
-* run several searches and combine the results into one table;
-* export again with different fields, without downloading BacDive again;
-* work offline with strains you have already downloaded.
-
-The first time bdiver downloads data in an interactive session it asks
-whether to cache, and remembers your answer. You can also decide yourself
-with `bdCacheEnable()` or `bdCacheDisable()`, or for one session with
-`options(bdiver.cache = TRUE)` or `FALSE`. Here the cache is turned on:
+bdiver can save downloaded records so they are not downloaded again. The
+first time you download data, it asks whether to use the cache. You can
+also turn it on or off yourself:
 
 ```{r cache-enable}
 bdCacheEnable()
 ```
 
-For example, records from several searches can be combined into a
-`DataFrame`; strains found by both searches are downloaded only once:
+With the cache, records from several searches can be combined without
+downloading any strain twice:
 
 ```{r cache-example, eval = online}
 ids <- c(bdSearchTaxon("Phaeobacter"), bdSearchTaxon("Ruegeria"))
-tbl <- bdExtract(bdFetch(ids, cache = TRUE))
+tbl <- bdExtract(bdFetch(ids))
 dim(tbl)
 ```
 
-Later, even offline, a table can be built from everything downloaded so
-far:
-
-```{r cache-offline, eval = online}
-tbl <- bdExtract(bdFetch(bdCachedIds(), cache = TRUE))
-dim(tbl)
-```
-
-`bdCacheInfo()` describes the cache; the same description is shown when
-bdiver is loaded. `bdCacheClear()` deletes the cache.
+`bdCacheInfo()` describes the cache, and `bdCacheClear()` deletes it.
+When BacDive publishes a new release, bdiver tells you, and you can clear
+the cache to download the new data.
 
 ```{r cache-info, eval = online}
 bdCacheInfo()
 bdCacheClear(ask = FALSE)
 ```
 
-A cache of all of BacDive takes about 1 GB. Records fetched with
-`predictions = TRUE` are cached separately.
+# AI-predicted traits
 
-## New BacDive releases
+BacDive also predicts some traits, such as Gram stain or motility, from
+genome sequences. bdiver includes these predictions only if you ask, with
+`predictions = TRUE` or with `bdPredictionsEnable()`. They are kept in
+separate columns from observed values:
 
-BacDive is updated in releases, and every record states the release it
-comes from. `bdRelease()` returns the current one:
-
-```{r release, eval = online}
-bdRelease()
+```{r predictions}
+t(as.data.frame(bdExtract(list(record), bdPredictionFields("motility"))))
 ```
 
-Cached records are kept until you decide to clear the cache, so your
-results do not change unexpectedly. When bdiver is loaded in an
-interactive session, it checks whether a newer BacDive release is
-available and adds a line to its description of the cache. For example,
-with a cache made before a new release:
+`bdSettings()` shows whether the cache and predictions are turned on:
 
-```
-bdiver cache: ~/.cache/R/bdiver
-    19 strains (98.7 kB) from BacDive release 20251201.10
-    Created 2026-01-12; last updated 2026-03-02
-    A newer BacDive release (20260601.11) is available.
-    To clear the cache, run bdCacheClear(). See ?bdCache for details.
-```
-
-The same notice is given the first time the cache is used in a session.
-To move to the new release, run `bdCacheClear()`; records are then
-downloaded again as you use them. Until you do, strains that are not in the
-cache yet come from the new release, so a table can combine releases. The
-release of a table is recorded in `metadata()`, and `bdExport()` reports it
-when it finishes.
-
-BacDive's web service does not send expiry information (`Expires` or
-`Cache-Control` headers), which is why bdiver compares releases instead. To
-skip the check, for example when working offline:
-
-```{r keep-release, eval = FALSE}
-options(bdiver.check_release = FALSE)
+```{r settings}
+bdSettings()
 ```
 
 # Session information

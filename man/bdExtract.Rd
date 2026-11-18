@@ -9,18 +9,13 @@ bdExtract(records, fields = bdDefaultFields())
 \arguments{
 \item{records}{\code{list} of BacDive records, as returned by \code{\link[=bdFetch]{bdFetch()}}.}
 
-\item{fields}{Named \code{list} field specification; see \code{\link[=bdField]{bdField()}} and
-\code{\link[=bdDefaultFields]{bdDefaultFields()}}.}
+\item{fields}{Named \code{list} of columns; see \code{\link[=bdDefaultFields]{bdDefaultFields()}} and
+\code{\link[=bdField]{bdField()}}.}
 }
 \value{
-A \link[S4Vectors:DataFrame]{S4Vectors::DataFrame} of \code{character} columns, one row per
-record, with missing values as \code{NA}. Column annotations are available
-with \code{\link[S4Vectors:mcols]{S4Vectors::mcols()}}: \code{path}, the BacDive element each column
-comes from (\code{NA} for custom functions), and \code{predicted}, whether it
-holds AI-predicted values. \code{\link[S4Vectors:metadata]{S4Vectors::metadata()}} records the data
-source, the BacDive release(s) of the records (see \code{\link[=bdRelease]{bdRelease()}}),
-and the time of extraction. Use \code{as.data.frame()} for a base
-\code{data.frame}.
+A \link[S4Vectors:DataFrame]{S4Vectors::DataFrame} with one row per strain. \code{mcols()} shows
+where each column comes from in the BacDive record, and \code{metadata()}
+the BacDive release.
 }
 \description{
 \code{bdExtract()} applies a field specification to each record and returns

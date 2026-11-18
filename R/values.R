@@ -36,9 +36,8 @@
 #'     list returned by [bdFetch()].
 #' @param path `character()` Element names from the top of the record to
 #'     the value, e.g. `c("Morphology", "cell morphology", "gram stain")`.
-#' @param predicted `logical(1)` Include AI-predicted values? Predicted
-#'     values are only present when records were fetched with
-#'     `predictions = TRUE`. Defaults to `FALSE`.
+#' @param predicted `logical(1)` Include AI-predicted values? Defaults to
+#'     `FALSE`.
 #'
 #' @return A `character` vector when all values found are scalars,
 #'     otherwise a `list`. Length zero when the path is absent.

@@ -14,60 +14,29 @@ bdPredictionsDisable()
 }
 \value{
 \itemize{
-\item \code{bdSettings()}: a named \code{list} with \code{cache} (\code{TRUE}, \code{FALSE}, or
-\code{NULL} when not chosen yet) and \code{predictions} (\code{TRUE} or \code{FALSE}),
-printed as a short description.
+\item \code{bdSettings()}: a \code{list} with the \code{cache} and \code{predictions} settings.
 \item \code{bdPredictionsEnable()}, \code{bdPredictionsDisable()}: \code{NULL}, invisibly.
 }
 }
 \description{
-bdiver remembers two choices across R sessions: whether to cache
-downloads, and whether to include AI-predicted traits. \code{bdSettings()}
-shows them. The other functions change them.
+bdiver remembers two choices between R sessions: whether to cache
+downloads (see \link{bdCache}) and whether to include AI-predicted traits.
+\code{bdSettings()} shows them.
 }
-\section{AI-predicted traits}{
+\details{
+AI-predicted traits are values that BacDive predicts from genome
+sequences, such as Gram stain or motility. They are never included
+unless you turn them on with \code{bdPredictionsEnable()}, or ask for them in
+a single call with \code{predictions = TRUE}. Predicted values are always
+kept in separate columns from observed values.
 
-BacDive offers traits predicted from genome sequences by machine
-learning models, such as Gram stain, motility, or oxygen tolerance. They
-are never included unless you ask for them, either for one call with
-\code{predictions = TRUE} (in \code{\link[=bdFetch]{bdFetch()}}, \code{\link[=bdExport]{bdExport()}} and
-\code{\link[=bdDefaultFields]{bdDefaultFields()}}), or for all calls with \code{bdPredictionsEnable()}.
-An explicit \code{predictions = TRUE} or \code{FALSE} always takes precedence over
-the setting.
-
-With predictions turned on, \code{\link[=bdFetch]{bdFetch()}} and \code{\link[=bdExport]{bdExport()}} request them
-from BacDive, and \code{\link[=bdDefaultFields]{bdDefaultFields()}} adds columns for them (see
-\code{\link[=bdPredictionFields]{bdPredictionFields()}}). Predicted values are kept out of columns of
-observed values, which always hold data measured in the laboratory.
+To change a setting for the current session only, use an option, e.g.
+\code{options(bdiver.predictions = TRUE)}.
 }
-
-\section{Caching}{
-
-See \link{bdCache} for what the cache does. \code{bdCacheEnable()} and
-\code{bdCacheDisable()} change this setting.
-}
-
-\section{Where settings are saved}{
-
-Settings are saved in \code{tools::R_user_dir("bdiver", "config")}; set
-\code{options(bdiver.config_dir = )} to use another directory. To change a
-setting for the current session only, set the option of the same name,
-for example \code{options(bdiver.predictions = TRUE)} or
-\code{options(bdiver.cache = FALSE)}; it takes precedence over the saved
-setting.
-}
-
 \examples{
 bdSettings()
 
-## Turn predictions on for this session only
-options(bdiver.predictions = TRUE)
-bdSettings()
-names(bdDefaultFields())
-options(bdiver.predictions = NULL)
-
 if (interactive()) {
-    ## Turn predictions on for this and later sessions
     bdPredictionsEnable()
 }
 

@@ -114,6 +114,34 @@ test_that("exports report their release", {
     local_mocked_bindings(.bdFetchBatch = fakeBacDive(1:3)$fetch)
     out <- withr::local_tempfile(fileext = ".csv")
     expect_message(bdExport(out, ids = 1:3), "BacDive release 20260601.11")
-    expect_identical(.bdReleaseNote(c("a", "b")),
-        " (records from several BacDive releases: a, b)")
+    expect_identical(.bdReleaseNote(NA_character_), "")
+})
+
+test_that("records that did not change in a release are not out of date", {
+    ## BacDive keeps the release in which a record last changed in its DOI,
+    ## so one download can mix releases.
+    localCache()
+    withr::local_options(bdiver.check_release = TRUE)
+    resetRelease()
+    current <- fakeBacDive(1:10, release = "20260601.11")
+    unchanged <- fakeBacDive(11:20, release = "20251217.10")
+    local_mocked_bindings(.bdFetchBatch = function(ids, ...) {
+        c(current$fetch(ids[ids <= 10]), unchanged$fetch(ids[ids > 10]))
+    })
+    records <- bdFetch(c(1, 15))
+    expect_identical(bdCacheInfo()$releases, "20260601.11")
+    resetRelease()
+    expect_identical(.bdOutdatedReleases(), character())
+    tbl <- bdExtract(records, list(id = c("General", "BacDive-ID")))
+    expect_identical(S4Vectors::metadata(tbl)$release, "20260601.11")
+})
+
+test_that("a block keeps the oldest release it was downloaded in", {
+    block <- .bdEmptyBlock()
+    record <- list(`1` = bdExampleRecord())
+    block <- .bdAddToBlock(block, record, 1L, "20260601.11")
+    block <- .bdAddToBlock(block, record, 2L, "20261201.1")
+    expect_identical(block$release, "20260601.11")
+    expect_identical(.bdNewest(c("20251217.10", NA, "20260601.11")),
+        "20260601.11")
 })

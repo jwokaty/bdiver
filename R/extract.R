@@ -44,17 +44,12 @@
 #' one row per strain and one column per field.
 #'
 #' @param records `list` of BacDive records, as returned by [bdFetch()].
-#' @param fields Named `list` field specification; see [bdField()] and
-#'     [bdDefaultFields()].
+#' @param fields Named `list` of columns; see [bdDefaultFields()] and
+#'     [bdField()].
 #'
-#' @return A [S4Vectors::DataFrame] of `character` columns, one row per
-#'     record, with missing values as `NA`. Column annotations are available
-#'     with [S4Vectors::mcols()]: `path`, the BacDive element each column
-#'     comes from (`NA` for custom functions), and `predicted`, whether it
-#'     holds AI-predicted values. [S4Vectors::metadata()] records the data
-#'     source, the BacDive release(s) of the records (see [bdRelease()]),
-#'     and the time of extraction. Use `as.data.frame()` for a base
-#'     `data.frame`.
+#' @return A [S4Vectors::DataFrame] with one row per strain. `mcols()` shows
+#'     where each column comes from in the BacDive record, and `metadata()`
+#'     the BacDive release.
 #'
 #' @examples
 #' records <- list(bdExampleRecord())
@@ -80,6 +75,6 @@ bdExtract <- function(records, fields = bdDefaultFields()) {
     tbl <- S4Vectors::DataFrame(values, check.names = FALSE)
     S4Vectors::mcols(tbl) <- .bdColumnInfo(fields)
     S4Vectors::metadata(tbl) <- list(source = .bdBaseUrl(),
-        release = .bdReleases(records), extracted = Sys.time())
+        release = .bdNewestRelease(records), extracted = Sys.time())
     tbl
 }

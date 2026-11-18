@@ -5,7 +5,7 @@ test_that("bdField selects and collapses values", {
     all <- bdField(path, collapse = "|")(record)
     expect_match(all, "^25\\|22\\|")
     expect_identical(bdField(c("General", "missing"))(record), NA_character_)
-    expect_error(bdField(c("General", "NCBI tax id"))(record), "scalar")
+    expect_error(bdField(c("General", "NCBI tax id"))(record), "groups")
 })
 
 test_that("default fields reproduce the bugphyzz columns", {

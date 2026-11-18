@@ -6,7 +6,8 @@
 ##   records  the records found, named by BacDive ID
 ##   checked  every ID requested, so IDs missing from BacDive are not
 ##            requested again
-##   release  the BacDive release of the records
+##   release  the BacDive release current when the oldest of its records
+##            was downloaded
 ##   updated  when the block last changed
 ## Records fetched with and without AI predictions are kept in separate
 ## blocks.
@@ -101,12 +102,15 @@
 }
 
 ## Add newly downloaded records to a block. `checked` holds every ID that
-## was requested, including IDs that do not exist in BacDive.
-.bdAddToBlock <- function(block, records, checked) {
+## was requested, including IDs that do not exist in BacDive. The block
+## keeps the oldest release it was downloaded in, so that it is reported as
+## out of date as soon as any of its records is.
+.bdAddToBlock <- function(block, records, checked, release) {
     block[["records"]][names(records)] <- records
     block[["checked"]] <- union(block[["checked"]], checked)
-    if (length(records))
-        block[["release"]] <- .bdReleases(records)[1L]
+    if (length(records) && !is.na(release))
+        block[["release"]] <- min(c(block[["release"]], release),
+            na.rm = TRUE)
     block[["updated"]] <- Sys.time()
     block
 }
@@ -148,9 +152,7 @@
     .bdSaveAtomic(index, .bdIndexFile())
 }
 
-## A summary of the cache, read from the index only: the number of cached
-## strains (with and without predictions), the BacDive releases they come
-## from, and when the cache was created and last updated.
+## A summary of the cache, read from the index only.
 .bdCacheSummary <- function() {
     if (!.bdCacheExists())
         return(NULL)
@@ -190,9 +192,8 @@
 ## ---- Fetching through the cache ------------------------------------------
 
 ## Return the records for `ids`, downloading only IDs never requested
-## before. Each batch is saved to the cache as soon as it is downloaded, so
-## an interrupted fetch keeps what it downloaded, and running it again
-## continues from there.
+## before. Each batch is saved as soon as it arrives, so an interrupted
+## fetch keeps what it downloaded.
 .bdFetchCached <- function(ids, predictions) {
     bfc <- .bdBfc()
     paths <- .bdBlockPaths(bfc)
@@ -206,13 +207,14 @@
     batches <- split(toDownload, ceiling(seq_along(toDownload) / .bdMaxIds()))
     for (batch in batches) {
         downloaded <- .bdFetchBatch(batch, predictions)
+        release <- .bdDownloadRelease(downloaded)
         batchBlocks <- .bdBlockName(.bdBlockOf(batch), predictions)
         for (name in unique(batchBlocks)) {
             checked <- batch[batchBlocks == name]
             newRecords <- downloaded[intersect(as.character(checked),
                 names(downloaded))]
             blocks[[name]] <- .bdAddToBlock(blocks[[name]], newRecords,
-                checked)
+                checked, release)
             paths[name] <- .bdSaveBlock(bfc, blocks[[name]], name,
                 paths[name])
         }
@@ -229,49 +231,17 @@
 
 #' Cache downloaded BacDive records
 #'
-#' bdiver can keep the records it downloads in a cache managed by
-#' \pkg{BiocFileCache}. Later calls to [bdFetch()] and [bdExport()] then
-#' read those records from the cache instead of downloading them again,
-#' whichever search they came from.
+#' bdiver can save the records it downloads, so they are not downloaded
+#' again. The first time you download data, bdiver asks whether to use the
+#' cache and remembers your answer; change it with `bdCacheEnable()` or
+#' `bdCacheDisable()`.
 #'
-#' @section Turning the cache on or off:
-#' The first time bdiver downloads data in an interactive session, it asks
-#' whether to use the cache and remembers the answer. Change it at any time
-#' with `bdCacheEnable()` or `bdCacheDisable()`, or for the current session
-#' only with `options(bdiver.cache = TRUE)` or `FALSE`. Sessions that are
-#' not interactive do not cache unless the cache was enabled.
+#' The cache keeps its records until you clear it with `bdCacheClear()`.
+#' When BacDive publishes a new release (see [bdRelease()]), bdiver tells
+#' you, and you can clear the cache to download the new data.
 #'
-#' @section What is cached:
-#' Records are cached in blocks of 100 BacDive IDs. IDs that do not exist
-#' in BacDive are remembered too, so they are not requested again. Records
-#' fetched with `predictions = TRUE` are cached separately. A cache of all
-#' of BacDive takes about 1 GB.
-#'
-#' Each batch of 100 IDs is saved as soon as it is downloaded. If a fetch
-#' is interrupted, for example by a lost connection, running it again
-#' downloads only what is missing.
-#'
-#' @section New BacDive releases:
-#' BacDive is updated in releases (see [bdRelease()]). The cache keeps its
-#' records until you clear it, so results do not change unexpectedly. When
-#' bdiver is loaded in an interactive session, and the first time the cache
-#' is used in a session, bdiver checks whether a newer release is available
-#' and tells you. The check is a single small request that gives up after
-#' five seconds, so it does not hold you up when BacDive is unreachable.
-#'
-#' To move to the new release, clear the cache with `bdCacheClear()`;
-#' records are then downloaded again as you use them.
-#' Until then, strains not yet in the cache are downloaded from the new
-#' release, so a table may combine releases; [bdExport()] reports this.
-#'
-#' BacDive's web service does not send expiry information (such as
-#' `Expires` or `Cache-Control` headers), so bdiver compares releases
-#' instead. To skip the check, set `options(bdiver.check_release = FALSE)`.
-#'
-#' @section Where the cache is:
-#' The cache is in `tools::R_user_dir("bdiver", "cache")`; set
-#' `options(bdiver.cache_dir = )` to use another directory. Your choice to
-#' use the cache is saved with your other settings; see [bdSettings()].
+#' A cache of all of BacDive takes about 1 GB. It is stored in
+#' `tools::R_user_dir("bdiver", "cache")`.
 #'
 #' @param ask `logical(1)` Ask for confirmation before deleting? Defaults
 #'     to `TRUE` in interactive sessions.
@@ -279,29 +249,21 @@
 #'     instead of those without? Defaults to `FALSE`.
 #'
 #' @return
-#' * `bdCacheInfo()`: a `list` (printed as a short description) with the
-#'   cache `path`; whether caching is
-#'   `enabled`; the number of cached `strains`, and of those cached with
-#'   predictions (`strainsWithPredictions`); the BacDive `releases` of the
-#'   cached records; the `size` in bytes; and when the cache was `created`
-#'   and last `updated`.
+#' * `bdCacheInfo()`: a `list` describing the cache: its `path`, number of
+#'   `strains`, BacDive `releases`, `size` in bytes, and dates.
 #' * `bdCachedIds()`: an `integer` vector of cached BacDive IDs.
 #' * `bdCacheEnable()`, `bdCacheDisable()`, `bdCacheClear()`: `NULL`,
 #'   invisibly.
 #'
-#' @seealso [bdSettings()], [bdFetch()], [bdExport()], [bdRelease()]
+#' @seealso [bdSettings()]
 #'
 #' @examples
 #' bdCacheInfo()
 #'
 #' if (interactive()) {
 #'     bdCacheEnable()
-#'     records <- bdFetch(bdSearchTaxon("Phaeobacter"))
-#'     bdCacheInfo()
-#'
-#'     ## Build a table from everything downloaded so far, offline
+#'     ## Build a table from everything downloaded so far
 #'     tbl <- bdExtract(bdFetch(bdCachedIds()))
-#'
 #'     bdCacheClear()
 #' }
 #'

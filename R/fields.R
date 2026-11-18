@@ -1,17 +1,11 @@
 #' Define a column of a BacDive table
 #'
-#' `bdField()` creates a field: a function that takes one BacDive record
-#' and returns the value of one column. Fields are combined into a named
-#' list (a field specification) that controls the columns of [bdExtract()]
-#' and [bdExport()].
-#'
-#' @details A field specification is a named `list`. Its names are the
-#' column names and each element is one of:
-#' * a `character` vector, a path into the record that is passed to
-#'   `bdField()` with the default arguments;
-#' * a field made with `bdField()`;
-#' * any `function(record)` that returns a `character(1)` (or something
-#'   that can be collapsed into one, such as a vector of values).
+#' The columns of [bdExtract()] and [bdExport()] are given as a named list.
+#' Each name is a column name, and each element says where its values come
+#' from: a path of element names in the record (e.g.
+#' `c("Morphology", "cell morphology", "gram stain")`), a column made with
+#' `bdField()` for more control, or a function that takes a record and
+#' returns a string.
 #'
 #' @param path `character()` Element names leading to the value. See
 #'     [bdValues()].
@@ -22,11 +16,7 @@
 #' @param predicted `logical(1)` Include AI-predicted values? Defaults to
 #'     `FALSE`.
 #'
-#' @return A `function(record)` returning `character(1)`, `NA` when the
-#'     record has no value. The function stops with an error when `path`
-#'     leads to groups of values rather than to single values; extend the
-#'     path to the element you need, e.g. `c("General", "NCBI tax id",
-#'     "NCBI tax id")` instead of `c("General", "NCBI tax id")`.
+#' @return A function that returns a record's value for this column.
 #'
 #' @seealso [bdDefaultFields()], [bdExtract()]
 #'
@@ -51,8 +41,9 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
     field <- function(record) {
         vals <- bdValues(record, path, predicted = predicted)
         if (!is.character(vals))
-            stop("path '", paste(path, collapse = " > "),
-                "' does not lead to scalar values", call. = FALSE)
+            stop("path '", paste(path, collapse = " > "), "' leads to ",
+                "groups of values; add the name of the value you want ",
+                "to the path", call. = FALSE)
         vals <- unique(vals[!is.na(vals) & nzchar(vals)])
         if (select == "first")
             vals <- utils::head(vals, 1L)
@@ -145,29 +136,21 @@ bdField <- function(path, select = c("all", "first"), collapse = ";",
 
 #' Default BacDive field specification
 #'
-#' `bdDefaultFields()` returns the field specification used by
-#' [bdExport()] by default. Its columns match the BacDive table used by
-#' bugphyzz: strain and taxonomy identifiers followed by one column per
-#' attribute. Where BacDive reports several observations of a single-valued
-#' attribute, the first one is kept. Columns that can hold several values
-#' keep all of them, separated by `";"`: the 16S and genome sequence
-#' accessions, halophily, hemolysis, and metabolite production and
-#' utilization.
+#' `bdDefaultFields()` returns the columns of the BacDive table used by
+#' bugphyzz. Change the list to add, drop, or rename columns. When BacDive
+#' has several values, columns keep the first one, except list-like columns
+#' (such as metabolite utilization), which keep all, separated by `";"`.
 #'
-#' `bdPredictionFields()` returns fields for AI-predicted traits. Each trait
-#' gives two columns, `predicted_<trait>` and
-#' `predicted_<trait>_confidence`. These columns are only filled for
-#' records fetched with AI-predicted traits (see [bdSettings()]).
+#' `bdPredictionFields()` returns a value and a confidence column for each
+#' AI-predicted trait (see [bdSettings()]).
 #'
-#' Modify the returned list to add, drop, rename, or reorder columns.
-#'
-#' @param predictions `logical(1)` or `NULL` Append [bdPredictionFields()]?
-#'     `NULL` (default) uses your setting, which is off unless you turned
-#'     it on with [bdPredictionsEnable()]; see [bdSettings()].
+#' @param predictions `logical(1)` or `NULL` Add the columns of
+#'     `bdPredictionFields()`? `NULL` (default) uses your setting; see
+#'     [bdSettings()].
 #' @param traits `character()` Predicted traits to include, as named in the
 #'     `"trait"` element of BacDive predictions.
 #'
-#' @return A named `list` of fields (see [bdField()]).
+#' @return A named `list` of columns.
 #'
 #' @examples
 #' fields <- bdDefaultFields()

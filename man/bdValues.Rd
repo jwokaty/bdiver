@@ -13,9 +13,8 @@ list returned by \code{\link[=bdFetch]{bdFetch()}}.}
 \item{path}{\code{character()} Element names from the top of the record to
 the value, e.g. \code{c("Morphology", "cell morphology", "gram stain")}.}
 
-\item{predicted}{\code{logical(1)} Include AI-predicted values? Predicted
-values are only present when records were fetched with
-\code{predictions = TRUE}. Defaults to \code{FALSE}.}
+\item{predicted}{\code{logical(1)} Include AI-predicted values? Defaults to
+\code{FALSE}.}
 }
 \value{
 A \code{character} vector when all values found are scalars,

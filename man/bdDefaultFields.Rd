@@ -10,33 +10,25 @@ bdDefaultFields(predictions = NULL)
 bdPredictionFields(traits = .bdPredictedTraits())
 }
 \arguments{
-\item{predictions}{\code{logical(1)} or \code{NULL} Append \code{\link[=bdPredictionFields]{bdPredictionFields()}}?
-\code{NULL} (default) uses your setting, which is off unless you turned
-it on with \code{\link[=bdPredictionsEnable]{bdPredictionsEnable()}}; see \code{\link[=bdSettings]{bdSettings()}}.}
+\item{predictions}{\code{logical(1)} or \code{NULL} Add the columns of
+\code{bdPredictionFields()}? \code{NULL} (default) uses your setting; see
+\code{\link[=bdSettings]{bdSettings()}}.}
 
 \item{traits}{\code{character()} Predicted traits to include, as named in the
 \code{"trait"} element of BacDive predictions.}
 }
 \value{
-A named \code{list} of fields (see \code{\link[=bdField]{bdField()}}).
+A named \code{list} of columns.
 }
 \description{
-\code{bdDefaultFields()} returns the field specification used by
-\code{\link[=bdExport]{bdExport()}} by default. Its columns match the BacDive table used by
-bugphyzz: strain and taxonomy identifiers followed by one column per
-attribute. Where BacDive reports several observations of a single-valued
-attribute, the first one is kept. Columns that can hold several values
-keep all of them, separated by \code{";"}: the 16S and genome sequence
-accessions, halophily, hemolysis, and metabolite production and
-utilization.
+\code{bdDefaultFields()} returns the columns of the BacDive table used by
+bugphyzz. Change the list to add, drop, or rename columns. When BacDive
+has several values, columns keep the first one, except list-like columns
+(such as metabolite utilization), which keep all, separated by \code{";"}.
 }
 \details{
-\code{bdPredictionFields()} returns fields for AI-predicted traits. Each trait
-gives two columns, \verb{predicted_<trait>} and
-\verb{predicted_<trait>_confidence}. These columns are only filled for
-records fetched with AI-predicted traits (see \code{\link[=bdSettings]{bdSettings()}}).
-
-Modify the returned list to add, drop, rename, or reorder columns.
+\code{bdPredictionFields()} returns a value and a confidence column for each
+AI-predicted trait (see \code{\link[=bdSettings]{bdSettings()}}).
 }
 \examples{
 fields <- bdDefaultFields()

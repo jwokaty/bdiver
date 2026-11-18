@@ -20,35 +20,30 @@ bdExport(
 \arguments{
 \item{file}{\code{character(1)} Path of the file to create.}
 
-\item{fields}{Named \code{list} field specification; see \code{\link[=bdField]{bdField()}}. The
-default, \code{bdDefaultFields(predictions)}, includes AI-predicted trait
-columns only when \code{predictions = TRUE}.}
+\item{fields}{Named \code{list} of columns; see \code{\link[=bdDefaultFields]{bdDefaultFields()}}.}
 
 \item{ids}{\code{integer()} or \code{NULL} BacDive IDs to export, e.g. from
 \code{\link[=bdSearchTaxon]{bdSearchTaxon()}}. \code{NULL} (default) exports every strain.}
 
 \item{predictions}{\code{logical(1)} or \code{NULL} Include AI-predicted traits?
-\code{NULL} (default) uses your setting, which is off unless you turned
-it on with \code{\link[=bdPredictionsEnable]{bdPredictionsEnable()}}; see \code{\link[=bdSettings]{bdSettings()}}.
-Predicted values never appear in columns of observed values built
-with \code{\link[=bdField]{bdField()}} unless that field sets \code{predicted = TRUE}.}
+\code{NULL} (default) uses your setting (off unless turned on); see
+\code{\link[=bdSettings]{bdSettings()}}.}
 
 \item{sep}{\code{character(1)} Field separator. Defaults to \code{","}; use
 \code{"\\t"} for a tab-separated file.}
 
-\item{resume}{\code{logical(1)} Continue an interrupted export of \code{file}?
-Defaults to \code{TRUE}.}
+\item{resume}{\code{logical(1)} Continue an interrupted export? Defaults to
+\code{TRUE}.}
 
-\item{overwrite}{\code{logical(1)} Replace \code{file} if it exists and there is
-nothing to resume? Defaults to \code{FALSE}.}
+\item{overwrite}{\code{logical(1)} Replace an existing \code{file}? Defaults to
+\code{FALSE}.}
 
-\item{maxEmptyBatches}{\code{integer(1)} When scanning all IDs, stop after
-this many consecutive empty batches of 100 IDs. Defaults to \code{100}.}
+\item{maxEmptyBatches}{\code{integer(1)} When exporting all of BacDive, stop
+after this many batches of 100 IDs in a row without strains.
+Defaults to \code{100}.}
 
 \item{cache}{\code{logical(1)} or \code{NULL} Use the download cache? \code{NULL}
-(default) uses your saved choice; see \link{bdCache}. With the cache, a
-second export (for example with other fields) downloads nothing that
-was already downloaded.}
+(default) uses your saved choice; see \link{bdCache}.}
 
 \item{verbose}{\code{logical(1)} Report progress? Defaults to \code{TRUE}.}
 }
@@ -56,55 +51,25 @@ was already downloaded.}
 The path to \code{file}, invisibly.
 }
 \description{
-\code{bdExport()} downloads BacDive strain records in batches of 100, flattens
-them with a field specification (see \code{\link[=bdDefaultFields]{bdDefaultFields()}}), and appends
-the rows to \code{file}. With the default arguments the whole database is
-exported in the format used by bugphyzz.
+\code{bdExport()} downloads strain records and writes them to a file, one row
+per strain. By default it exports all of BacDive with the columns used
+by bugphyzz; this makes about 2,000 requests and takes about an hour.
 }
 \details{
-When \code{ids} is \code{NULL}, BacDive IDs are scanned upwards from 1 until
-\code{maxEmptyBatches} consecutive batches return no strains. A full export
-makes roughly 2,000 requests and takes about an hour.
+If an export is interrupted, run the same call again: it continues where
+it stopped. While an export runs, other R sessions cannot export to the
+same file. If R crashed during an export and bdiver cannot tell whether
+it is still running (this can happen on Windows), it stops and tells you
+how to remove the lock.
 }
-\section{Interrupted exports}{
-
-Progress is saved after every batch in \code{paste0(file, ".progress")}.
-If an export is interrupted, call \code{bdExport()} again with the same
-arguments and it continues where it stopped. The progress file is
-removed when the export completes.
-}
-
-\section{Locks}{
-
-While an export runs, \code{paste0(file, ".lock")} keeps other R sessions from
-exporting to the same file. The lock is removed when \code{bdExport()} ends,
-including after errors and interruptions. If R itself crashes, the lock
-is left behind; the next \code{bdExport()} finds that the R process that made
-it has ended and replaces it. On Windows this check uses the \code{tasklist}
-command. It cannot be done when \code{tasklist} is unavailable or when the
-lock was made on another computer (for example on a network drive). In
-those cases \code{bdExport()} stops and shows the path of the lock: make sure
-no export of the file is running, delete the lock with
-\code{unlink(paste0(file, ".lock"), recursive = TRUE)}, and run \code{bdExport()}
-again.
-}
-
-\section{Releases}{
-
-When the export finishes, \code{bdExport()} reports the BacDive release of
-the exported records (see \code{\link[=bdRelease]{bdRelease()}}).
-}
-
 \examples{
 out <- tempfile(fileext = ".csv")
 bdExport(out, ids = c(24493, 23324), cache = FALSE)
 read.csv(out)[, 1:6]
 
-## Your own columns, with predicted traits
-fields <- c(bdDefaultFields()[c("bacdive_id", "taxon_name")],
-    bdPredictionFields(c("gram-positive", "motility")))
-bdExport(out, fields, ids = 24493, predictions = TRUE, overwrite = TRUE,
-    cache = FALSE)
+## Your own columns
+fields <- bdDefaultFields()[c("bacdive_id", "taxon_name", "gram_stain")]
+bdExport(out, fields, ids = 24493, overwrite = TRUE, cache = FALSE)
 read.csv(out)
 
 if (interactive()) {
@@ -112,7 +77,4 @@ if (interactive()) {
     bdExport("bacdive.csv")
 }
 
-}
-\seealso{
-\link{bdCache}, \code{\link[=bdRelease]{bdRelease()}}
 }

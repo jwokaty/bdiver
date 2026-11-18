@@ -46,37 +46,20 @@
 
 #' Retrieve BacDive strain records
 #'
-#' `bdFetch()` downloads the complete BacDive records for the given BacDive
-#' IDs. Requests are split into batches of 100 IDs, the maximum allowed by
-#' the API. When the cache is in use (see [bdCache]), records downloaded
-#' before are read from the cache and only the others are downloaded.
+#' `bdFetch()` downloads the complete records of the given strains.
 #'
-#' Short network interruptions are retried automatically. If a fetch stops
-#' anyway (for example after a longer outage), what happens depends on the
-#' cache: with the cache, every batch is saved as soon as it arrives, so
-#' running the same call again downloads only the rest; without it, the
-#' records are only kept in memory and are lost. For large downloads, use
-#' the cache or [bdExport()].
-#'
-#' AI-predicted traits are excluded unless you ask for them, with
-#' `predictions = TRUE` or with [bdPredictionsEnable()]. With predictions,
-#' BacDive adds a `"Genome-based predictions"` section
-#' and also places predicted values next to observed ones in other sections
-#' (for example, a predicted Gram stain under `"Morphology"`). Predicted
-#' values carry a `"confidence"` element; [bdValues()] and [bdField()] skip
-#' them unless asked not to.
+#' With the cache (see [bdCache]), records are downloaded only once, and an
+#' interrupted download continues where it stopped when run again.
 #'
 #' @param ids `integer()` BacDive IDs, e.g. from [bdSearchTaxon()].
 #' @param predictions `logical(1)` or `NULL` Include AI-predicted traits?
-#'     `NULL` (default) uses your setting, which is off unless you turned
-#'     it on with [bdPredictionsEnable()]; see [bdSettings()].
+#'     `NULL` (default) uses your setting (off unless turned on); see
+#'     [bdSettings()].
 #' @param cache `logical(1)` or `NULL` Use the download cache? `NULL`
-#'     (default) uses your saved choice; if you have not chosen yet, an
-#'     interactive session asks once. See [bdCache].
+#'     (default) uses your saved choice; see [bdCache].
 #'
-#' @return A named `list` with one element per strain found, named by
-#'     BacDive ID. Each element is the strain record as a nested list.
-#'     IDs that do not exist in BacDive are dropped with a message.
+#' @return A `list` of records, named by BacDive ID. IDs not found in
+#'     BacDive are left out, with a message.
 #'
 #' @seealso [bdExtract()] to turn records into a table.
 #'

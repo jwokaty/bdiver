@@ -10,39 +10,22 @@ bdFetch(ids, predictions = NULL, cache = NULL)
 \item{ids}{\code{integer()} BacDive IDs, e.g. from \code{\link[=bdSearchTaxon]{bdSearchTaxon()}}.}
 
 \item{predictions}{\code{logical(1)} or \code{NULL} Include AI-predicted traits?
-\code{NULL} (default) uses your setting, which is off unless you turned
-it on with \code{\link[=bdPredictionsEnable]{bdPredictionsEnable()}}; see \code{\link[=bdSettings]{bdSettings()}}.}
+\code{NULL} (default) uses your setting (off unless turned on); see
+\code{\link[=bdSettings]{bdSettings()}}.}
 
 \item{cache}{\code{logical(1)} or \code{NULL} Use the download cache? \code{NULL}
-(default) uses your saved choice; if you have not chosen yet, an
-interactive session asks once. See \link{bdCache}.}
+(default) uses your saved choice; see \link{bdCache}.}
 }
 \value{
-A named \code{list} with one element per strain found, named by
-BacDive ID. Each element is the strain record as a nested list.
-IDs that do not exist in BacDive are dropped with a message.
+A \code{list} of records, named by BacDive ID. IDs not found in
+BacDive are left out, with a message.
 }
 \description{
-\code{bdFetch()} downloads the complete BacDive records for the given BacDive
-IDs. Requests are split into batches of 100 IDs, the maximum allowed by
-the API. When the cache is in use (see \link{bdCache}), records downloaded
-before are read from the cache and only the others are downloaded.
+\code{bdFetch()} downloads the complete records of the given strains.
 }
 \details{
-Short network interruptions are retried automatically. If a fetch stops
-anyway (for example after a longer outage), what happens depends on the
-cache: with the cache, every batch is saved as soon as it arrives, so
-running the same call again downloads only the rest; without it, the
-records are only kept in memory and are lost. For large downloads, use
-the cache or \code{\link[=bdExport]{bdExport()}}.
-
-AI-predicted traits are excluded unless you ask for them, with
-\code{predictions = TRUE} or with \code{\link[=bdPredictionsEnable]{bdPredictionsEnable()}}. With predictions,
-BacDive adds a \code{"Genome-based predictions"} section
-and also places predicted values next to observed ones in other sections
-(for example, a predicted Gram stain under \code{"Morphology"}). Predicted
-values carry a \code{"confidence"} element; \code{\link[=bdValues]{bdValues()}} and \code{\link[=bdField]{bdField()}} skip
-them unless asked not to.
+With the cache (see \link{bdCache}), records are downloaded only once, and an
+interrupted download continues where it stopped when run again.
 }
 \examples{
 records <- bdFetch(c(24493, 12), cache = FALSE)

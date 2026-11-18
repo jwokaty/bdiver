@@ -28,85 +28,38 @@ to \code{TRUE} in interactive sessions.}
 }
 \value{
 \itemize{
-\item \code{bdCacheInfo()}: a \code{list} (printed as a short description) with the
-cache \code{path}; whether caching is
-\code{enabled}; the number of cached \code{strains}, and of those cached with
-predictions (\code{strainsWithPredictions}); the BacDive \code{releases} of the
-cached records; the \code{size} in bytes; and when the cache was \code{created}
-and last \code{updated}.
+\item \code{bdCacheInfo()}: a \code{list} describing the cache: its \code{path}, number of
+\code{strains}, BacDive \code{releases}, \code{size} in bytes, and dates.
 \item \code{bdCachedIds()}: an \code{integer} vector of cached BacDive IDs.
 \item \code{bdCacheEnable()}, \code{bdCacheDisable()}, \code{bdCacheClear()}: \code{NULL},
 invisibly.
 }
 }
 \description{
-bdiver can keep the records it downloads in a cache managed by
-\pkg{BiocFileCache}. Later calls to \code{\link[=bdFetch]{bdFetch()}} and \code{\link[=bdExport]{bdExport()}} then
-read those records from the cache instead of downloading them again,
-whichever search they came from.
+bdiver can save the records it downloads, so they are not downloaded
+again. The first time you download data, bdiver asks whether to use the
+cache and remembers your answer; change it with \code{bdCacheEnable()} or
+\code{bdCacheDisable()}.
 }
-\section{Turning the cache on or off}{
+\details{
+The cache keeps its records until you clear it with \code{bdCacheClear()}.
+When BacDive publishes a new release (see \code{\link[=bdRelease]{bdRelease()}}), bdiver tells
+you, and you can clear the cache to download the new data.
 
-The first time bdiver downloads data in an interactive session, it asks
-whether to use the cache and remembers the answer. Change it at any time
-with \code{bdCacheEnable()} or \code{bdCacheDisable()}, or for the current session
-only with \code{options(bdiver.cache = TRUE)} or \code{FALSE}. Sessions that are
-not interactive do not cache unless the cache was enabled.
+A cache of all of BacDive takes about 1 GB. It is stored in
+\code{tools::R_user_dir("bdiver", "cache")}.
 }
-
-\section{What is cached}{
-
-Records are cached in blocks of 100 BacDive IDs. IDs that do not exist
-in BacDive are remembered too, so they are not requested again. Records
-fetched with \code{predictions = TRUE} are cached separately. A cache of all
-of BacDive takes about 1 GB.
-
-Each batch of 100 IDs is saved as soon as it is downloaded. If a fetch
-is interrupted, for example by a lost connection, running it again
-downloads only what is missing.
-}
-
-\section{New BacDive releases}{
-
-BacDive is updated in releases (see \code{\link[=bdRelease]{bdRelease()}}). The cache keeps its
-records until you clear it, so results do not change unexpectedly. When
-bdiver is loaded in an interactive session, and the first time the cache
-is used in a session, bdiver checks whether a newer release is available
-and tells you. The check is a single small request that gives up after
-five seconds, so it does not hold you up when BacDive is unreachable.
-
-To move to the new release, clear the cache with \code{bdCacheClear()};
-records are then downloaded again as you use them.
-Until then, strains not yet in the cache are downloaded from the new
-release, so a table may combine releases; \code{\link[=bdExport]{bdExport()}} reports this.
-
-BacDive's web service does not send expiry information (such as
-\code{Expires} or \code{Cache-Control} headers), so bdiver compares releases
-instead. To skip the check, set \code{options(bdiver.check_release = FALSE)}.
-}
-
-\section{Where the cache is}{
-
-The cache is in \code{tools::R_user_dir("bdiver", "cache")}; set
-\code{options(bdiver.cache_dir = )} to use another directory. Your choice to
-use the cache is saved with your other settings; see \code{\link[=bdSettings]{bdSettings()}}.
-}
-
 \examples{
 bdCacheInfo()
 
 if (interactive()) {
     bdCacheEnable()
-    records <- bdFetch(bdSearchTaxon("Phaeobacter"))
-    bdCacheInfo()
-
-    ## Build a table from everything downloaded so far, offline
+    ## Build a table from everything downloaded so far
     tbl <- bdExtract(bdFetch(bdCachedIds()))
-
     bdCacheClear()
 }
 
 }
 \seealso{
-\code{\link[=bdSettings]{bdSettings()}}, \code{\link[=bdFetch]{bdFetch()}}, \code{\link[=bdExport]{bdExport()}}, \code{\link[=bdRelease]{bdRelease()}}
+\code{\link[=bdSettings]{bdSettings()}}
 }

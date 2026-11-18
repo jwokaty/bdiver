@@ -22,7 +22,7 @@
 
 .bdNewProgress <- function(job) {
     list(job = job, position = 0L, emptyBatches = 0L, rows = 0L,
-        releases = character())
+        release = NA_character_)
 }
 
 
@@ -82,13 +82,10 @@
     ids[seq.int(done + 1L, min(done + .bdMaxIds(), length(ids)))]
 }
 
-.bdReleaseNote <- function(releases) {
-    if (!length(releases))
+.bdReleaseNote <- function(release) {
+    if (is.na(release))
         return("")
-    if (length(releases) == 1L)
-        return(paste0(" (BacDive release ", releases, ")"))
-    paste0(" (records from several BacDive releases: ",
-        paste(releases, collapse = ", "), ")")
+    paste0(" (BacDive release ", release, ")")
 }
 
 
@@ -96,77 +93,46 @@
 
 #' Export BacDive to a delimited file
 #'
-#' `bdExport()` downloads BacDive strain records in batches of 100, flattens
-#' them with a field specification (see [bdDefaultFields()]), and appends
-#' the rows to `file`. With the default arguments the whole database is
-#' exported in the format used by bugphyzz.
+#' `bdExport()` downloads strain records and writes them to a file, one row
+#' per strain. By default it exports all of BacDive with the columns used
+#' by bugphyzz; this makes about 2,000 requests and takes about an hour.
 #'
-#' When `ids` is `NULL`, BacDive IDs are scanned upwards from 1 until
-#' `maxEmptyBatches` consecutive batches return no strains. A full export
-#' makes roughly 2,000 requests and takes about an hour.
-#'
-#' @section Interrupted exports:
-#' Progress is saved after every batch in `paste0(file, ".progress")`.
-#' If an export is interrupted, call `bdExport()` again with the same
-#' arguments and it continues where it stopped. The progress file is
-#' removed when the export completes.
-#'
-#' @section Locks:
-#' While an export runs, `paste0(file, ".lock")` keeps other R sessions from
-#' exporting to the same file. The lock is removed when `bdExport()` ends,
-#' including after errors and interruptions. If R itself crashes, the lock
-#' is left behind; the next `bdExport()` finds that the R process that made
-#' it has ended and replaces it. On Windows this check uses the `tasklist`
-#' command. It cannot be done when `tasklist` is unavailable or when the
-#' lock was made on another computer (for example on a network drive). In
-#' those cases `bdExport()` stops and shows the path of the lock: make sure
-#' no export of the file is running, delete the lock with
-#' `unlink(paste0(file, ".lock"), recursive = TRUE)`, and run `bdExport()`
-#' again.
-#'
-#' @section Releases:
-#' When the export finishes, `bdExport()` reports the BacDive release of
-#' the exported records (see [bdRelease()]).
+#' If an export is interrupted, run the same call again: it continues where
+#' it stopped. While an export runs, other R sessions cannot export to the
+#' same file. If R crashed during an export and bdiver cannot tell whether
+#' it is still running (this can happen on Windows), it stops and tells you
+#' how to remove the lock.
 #'
 #' @param file `character(1)` Path of the file to create.
-#' @param fields Named `list` field specification; see [bdField()]. The
-#'     default, `bdDefaultFields(predictions)`, includes AI-predicted trait
-#'     columns only when `predictions = TRUE`.
+#' @param fields Named `list` of columns; see [bdDefaultFields()].
 #' @param ids `integer()` or `NULL` BacDive IDs to export, e.g. from
 #'     [bdSearchTaxon()]. `NULL` (default) exports every strain.
 #' @param predictions `logical(1)` or `NULL` Include AI-predicted traits?
-#'     `NULL` (default) uses your setting, which is off unless you turned
-#'     it on with [bdPredictionsEnable()]; see [bdSettings()].
-#'     Predicted values never appear in columns of observed values built
-#'     with [bdField()] unless that field sets `predicted = TRUE`.
+#'     `NULL` (default) uses your setting (off unless turned on); see
+#'     [bdSettings()].
 #' @param sep `character(1)` Field separator. Defaults to `","`; use
 #'     `"\t"` for a tab-separated file.
-#' @param resume `logical(1)` Continue an interrupted export of `file`?
-#'     Defaults to `TRUE`.
-#' @param overwrite `logical(1)` Replace `file` if it exists and there is
-#'     nothing to resume? Defaults to `FALSE`.
-#' @param maxEmptyBatches `integer(1)` When scanning all IDs, stop after
-#'     this many consecutive empty batches of 100 IDs. Defaults to `100`.
+#' @param resume `logical(1)` Continue an interrupted export? Defaults to
+#'     `TRUE`.
+#' @param overwrite `logical(1)` Replace an existing `file`? Defaults to
+#'     `FALSE`.
+#' @param maxEmptyBatches `integer(1)` When exporting all of BacDive, stop
+#'     after this many batches of 100 IDs in a row without strains.
+#'     Defaults to `100`.
 #' @param cache `logical(1)` or `NULL` Use the download cache? `NULL`
-#'     (default) uses your saved choice; see [bdCache]. With the cache, a
-#'     second export (for example with other fields) downloads nothing that
-#'     was already downloaded.
+#'     (default) uses your saved choice; see [bdCache].
 #' @param verbose `logical(1)` Report progress? Defaults to `TRUE`.
 #'
 #' @return The path to `file`, invisibly.
-#'
-#' @seealso [bdCache], [bdRelease()]
 #'
 #' @examples
 #' out <- tempfile(fileext = ".csv")
 #' bdExport(out, ids = c(24493, 23324), cache = FALSE)
 #' read.csv(out)[, 1:6]
 #'
-#' ## Your own columns, with predicted traits
-#' fields <- c(bdDefaultFields()[c("bacdive_id", "taxon_name")],
-#'     bdPredictionFields(c("gram-positive", "motility")))
-#' bdExport(out, fields, ids = 24493, predictions = TRUE, overwrite = TRUE,
-#'     cache = FALSE)
+#' ## Your own columns
+#' fields <- bdDefaultFields()[c("bacdive_id", "taxon_name", "gram_stain")]
+#' bdExport(out, fields, ids = 24493, overwrite = TRUE, cache = FALSE)
 #' read.csv(out)
 #'
 #' if (interactive()) {
@@ -205,8 +171,8 @@ bdExport <- function(file, fields = bdDefaultFields(predictions),
 
         progress[["position"]] <- progress[["position"]] + length(batch)
         progress[["rows"]] <- progress[["rows"]] + length(records)
-        progress[["releases"]] <- union(progress[["releases"]],
-            .bdReleases(records))
+        progress[["release"]] <- .bdNewest(c(progress[["release"]],
+            .bdNewestRelease(records)))
         progress[["emptyBatches"]] <- if (length(records)) 0L else
             progress[["emptyBatches"]] + 1L
         .bdSaveAtomic(progress, .bdProgressFile(file))
@@ -220,6 +186,6 @@ bdExport <- function(file, fields = bdDefaultFields(predictions),
     unlink(.bdProgressFile(file))
     if (verbose)
         message("Exported ", progress[["rows"]], " strains to ", file,
-            .bdReleaseNote(progress[["releases"]]))
+            .bdReleaseNote(progress[["release"]]))
     invisible(file)
 }
