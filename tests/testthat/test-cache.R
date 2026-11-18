@@ -90,3 +90,33 @@ test_that("bdCacheInfo prints a description of the cache", {
     expect_output(print(bdCacheInfo()), "5 strains .* from BacDive release")
     expect_output(print(bdCacheInfo()), "bdCacheClear()", fixed = TRUE)
 })
+
+test_that("an interrupted cached fetch keeps what it downloaded", {
+    localCache()
+    fake <- fakeBacDive(1:500)
+    calls <- 0L
+    flaky <- function(ids, predictions = FALSE, ...) {
+        calls <<- calls + 1L
+        if (calls == 3L)
+            stop("connection lost")
+        fake$fetch(ids, predictions)
+    }
+    local_mocked_bindings(.bdFetchBatch = flaky)
+    expect_error(bdFetch(1:500), "connection lost")
+    expect_identical(bdCachedIds(), 1:200)
+    ## Running it again downloads only the rest.
+    records <- bdFetch(1:500)
+    expect_identical(names(records), as.character(1:500))
+    expect_length(fake$requests, 5L)
+    expect_identical(fake$requests[[3L]], 201:300)
+})
+
+test_that("a block filled by several requests is stored once", {
+    localCache()
+    local_mocked_bindings(.bdFetchBatch = fakeBacDive(1:100)$fetch)
+    bdFetch(c(1, 2))
+    bdFetch(c(3, 4))
+    paths <- .bdBlockPaths(.bdBfc())
+    expect_length(paths, 1L)
+    expect_identical(bdCachedIds(), 1:4)
+})

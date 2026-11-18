@@ -60,6 +60,10 @@ Records are cached in blocks of 100 BacDive IDs. IDs that do not exist
 in BacDive are remembered too, so they are not requested again. Records
 fetched with \code{predictions = TRUE} are cached separately. A cache of all
 of BacDive takes about 1 GB.
+
+Each batch of 100 IDs is saved as soon as it is downloaded. If a fetch
+is interrupted, for example by a lost connection, running it again
+downloads only what is missing.
 }
 
 \section{New BacDive releases}{

@@ -100,17 +100,23 @@
     stats::setNames(info[["rpath"]][isBlock], info[["rname"]][isBlock])
 }
 
-## Add newly downloaded records to a block and save it.
-.bdAddToBlock <- function(bfc, path, name, block, records, checked) {
+## Add newly downloaded records to a block. `checked` holds every ID that
+## was requested, including IDs that do not exist in BacDive.
+.bdAddToBlock <- function(block, records, checked) {
     block[["records"]][names(records)] <- records
     block[["checked"]] <- union(block[["checked"]], checked)
     if (length(records))
         block[["release"]] <- .bdReleases(records)[1L]
     block[["updated"]] <- Sys.time()
+    block
+}
+
+## Save a block, adding it to BiocFileCache if it is new. Returns its path.
+.bdSaveBlock <- function(bfc, block, name, path) {
     if (is.na(path))
         path <- BiocFileCache::bfcnew(bfc, name, ext = ".rds")
     .bdSaveAtomic(block, path)
-    block
+    unname(path)
 }
 
 
@@ -184,34 +190,34 @@
 ## ---- Fetching through the cache ------------------------------------------
 
 ## Return the records for `ids`, downloading only IDs never requested
-## before.
+## before. Each batch is saved to the cache as soon as it is downloaded, so
+## an interrupted fetch keeps what it downloaded, and running it again
+## continues from there.
 .bdFetchCached <- function(ids, predictions) {
     bfc <- .bdBfc()
     paths <- .bdBlockPaths(bfc)
-    idsByBlock <- split(ids, .bdBlockOf(ids))
-    names(idsByBlock) <- .bdBlockName(as.integer(names(idsByBlock)),
-        predictions)
-    blocks <- lapply(names(idsByBlock), function(name) {
-        .bdReadBlock(paths[name])
-    })
-    names(blocks) <- names(idsByBlock)
+    blockNames <- unique(.bdBlockName(.bdBlockOf(ids), predictions))
+    blocks <- lapply(blockNames, function(name) .bdReadBlock(paths[name]))
+    names(blocks) <- blockNames
     .bdNotifyNewRelease()
 
-    notChecked <- Map(function(blockIds, block) {
-        blockIds[!blockIds %in% block[["checked"]]]
-    }, idsByBlock, blocks)
-    downloaded <- .bdFetchNetwork(unlist(notChecked, use.names = FALSE),
-        predictions)
-
-    changed <- names(notChecked)[lengths(notChecked) > 0L]
-    for (name in changed) {
-        newIds <- as.character(notChecked[[name]])
-        newRecords <- downloaded[intersect(newIds, names(downloaded))]
-        blocks[[name]] <- .bdAddToBlock(bfc, unname(paths[name]), name,
-            blocks[[name]], newRecords, notChecked[[name]])
+    allChecked <- unlist(lapply(blocks, `[[`, "checked"), use.names = FALSE)
+    toDownload <- ids[!ids %in% allChecked]
+    batches <- split(toDownload, ceiling(seq_along(toDownload) / .bdMaxIds()))
+    for (batch in batches) {
+        downloaded <- .bdFetchBatch(batch, predictions)
+        batchBlocks <- .bdBlockName(.bdBlockOf(batch), predictions)
+        for (name in unique(batchBlocks)) {
+            checked <- batch[batchBlocks == name]
+            newRecords <- downloaded[intersect(as.character(checked),
+                names(downloaded))]
+            blocks[[name]] <- .bdAddToBlock(blocks[[name]], newRecords,
+                checked)
+            paths[name] <- .bdSaveBlock(bfc, blocks[[name]], name,
+                paths[name])
+        }
+        .bdUpdateIndex(blocks[unique(batchBlocks)])
     }
-    if (length(changed))
-        .bdUpdateIndex(blocks[changed])
 
     records <- unlist(lapply(unname(blocks), `[[`, "records"),
         recursive = FALSE)
@@ -240,6 +246,10 @@
 #' in BacDive are remembered too, so they are not requested again. Records
 #' fetched with `predictions = TRUE` are cached separately. A cache of all
 #' of BacDive takes about 1 GB.
+#'
+#' Each batch of 100 IDs is saved as soon as it is downloaded. If a fetch
+#' is interrupted, for example by a lost connection, running it again
+#' downloads only what is missing.
 #'
 #' @section New BacDive releases:
 #' BacDive is updated in releases (see [bdRelease()]). The cache keeps its

@@ -213,13 +213,21 @@ Leave `ids` as `NULL` to export every strain in BacDive. IDs are then
 scanned upwards from 1 until no more strains are found. A full export takes
 about an hour.
 
-## Interrupted exports
+## Interrupted downloads
 
-Rows are written to the file after every batch of 100 IDs, together with a
-small progress file. If the export is interrupted (an error, a lost
-connection, or R crashing), run the same call again: it continues where it
-stopped, so at most one batch is downloaded again. With the cache enabled,
-nothing is downloaded twice.
+Short network interruptions are retried automatically: each request is
+tried up to five times, waiting longer each time, and BacDive's requests to
+slow down are respected. If a download stops anyway:
+
+* `bdExport()` saves its progress after every batch of 100 IDs. Run the
+  same call again and it continues where it stopped, so at most one batch
+  is downloaded again.
+* `bdFetch()` with the cache (see below) saves every batch to the cache as
+  soon as it arrives. Running the same call again downloads only what is
+  missing.
+* `bdFetch()` without the cache keeps records in memory only, so an
+  interrupted call has to start again. Use the cache or `bdExport()` for
+  large downloads.
 
 ## Locks
 

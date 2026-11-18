@@ -51,6 +51,13 @@
 #' the API. When the cache is in use (see [bdCache]), records downloaded
 #' before are read from the cache and only the others are downloaded.
 #'
+#' Short network interruptions are retried automatically. If a fetch stops
+#' anyway (for example after a longer outage), what happens depends on the
+#' cache: with the cache, every batch is saved as soon as it arrives, so
+#' running the same call again downloads only the rest; without it, the
+#' records are only kept in memory and are lost. For large downloads, use
+#' the cache or [bdExport()].
+#'
 #' AI-predicted traits are excluded unless you ask for them, with
 #' `predictions = TRUE` or with [bdPredictionsEnable()]. With predictions,
 #' BacDive adds a `"Genome-based predictions"` section
